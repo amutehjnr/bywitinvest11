@@ -5,43 +5,26 @@
 require('dotenv').config();
 const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
-const User = require('./models/User');  // ← Fixed: remove the { }
-console.log('User type:', typeof User);
-console.log('User value:', User);
-console.log('User methods:', User ? Object.keys(User) : 'undefined');
+const User = require('./models/User');
 const { Plan, Team, Testimonial, FAQ, SiteInfo, Blog } = require('./models/index');
 
 async function seed() {
-  if (!process.env.MONGODB_URI) {
-    console.error('❌ MONGODB_URI not set in .env');
-    process.exit(1);
-  }
-
   await mongoose.connect(process.env.MONGODB_URI);
   console.log('Connected to MongoDB...');
 
   // Clear existing
   await Promise.all([
-    User.deleteMany({}), 
-    Plan.deleteMany({}), 
-    Team.deleteMany({}),
-    Testimonial.deleteMany({}), 
-    FAQ.deleteMany({}), 
-    SiteInfo.deleteMany({}), 
-    Blog.deleteMany({})
+    User.deleteMany({}), Plan.deleteMany({}), Team.deleteMany({}),
+    Testimonial.deleteMany({}), FAQ.deleteMany({}), SiteInfo.deleteMany({}), Blog.deleteMany({})
   ]);
-  console.log('🗑 Cleared existing collections');
 
   // Admin user
   await User.create({
     username: 'mustaphaadmin',
     email: 'mustaeenms@gmail.com',
     password: await bcrypt.hash('Musamarch@121', 10),
-    firstName: 'Site', 
-    lastName: 'Admin',
-    role: 'admin', 
-    isActive: true, 
-    isVerified: true,
+    firstName: 'Site', lastName: 'Admin',
+    role: 'admin', isActive: true, isVerified: true,
     balance: 0
   });
 
@@ -50,13 +33,9 @@ async function seed() {
     username: 'demouser',
     email: 'demo@lucrativeetf.com',
     password: await bcrypt.hash('Demo@123', 10),
-    firstName: 'Demo', 
-    lastName: 'User',
-    country: 'USA', 
-    phone: '+1234567890',
-    role: 'user', 
-    isActive: true, 
-    isVerified: true,
+    firstName: 'Demo', lastName: 'User',
+    country: 'USA', phone: '+1234567890',
+    role: 'user', isActive: true, isVerified: true,
     balance: 1000
   });
 
@@ -113,21 +92,15 @@ async function seed() {
 
   // Sample blog posts
   await Blog.insertMany([
-    { headline: 'Bitcoin Appreciates After Market Speculation', intro: 'The most popular cryptocurrency has seen significant gains following weeks of speculation.', body: 'Bitcoin has risen sharply as investors...' },
-    { headline: 'Why ETF Investing is the Smart Choice in 2024', intro: 'Exchange Traded Funds continue to outperform traditional investment methods.', body: 'ETF investing provides diversification...' },
-    { headline: 'LucrativeETF Reaches $10M in Managed Assets', intro: 'Our platform celebrates a major milestone as total assets under management exceed $10 million.', body: 'We are proud to announce...' }
+    { headline: 'Bitcoin Appreciates After Market Speculation', intro: 'The most popular cryptocurrency has seen significant gains following weeks of speculation.', body: 'Bitcoin has risen sharply as investors...', createdAt: new Date() },
+    { headline: 'Why ETF Investing is the Smart Choice in 2024', intro: 'Exchange Traded Funds continue to outperform traditional investment methods.', body: 'ETF investing provides diversification...', createdAt: new Date() },
+    { headline: 'LucrativeETF Reaches $10M in Managed Assets', intro: 'Our platform celebrates a major milestone as total assets under management exceed $10 million.', body: 'We are proud to announce...', createdAt: new Date() }
   ]);
 
-  console.log('\n✅ Database seeded successfully!');
-  console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-  console.log('Admin  → mustaeenms@gmail.com / Musamarch@121');
-  console.log('Demo   → demo@lucrativeetf.com / Demo@123');
-  console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-  
+  console.log('✅ Database seeded successfully!');
+  console.log('Admin login: admin@lucrativeetf.com / Admin@123');
+  console.log('Demo login:  demo@lucrativeetf.com / Demo@123');
   await mongoose.disconnect();
 }
 
-seed().catch(err => { 
-  console.error('Seed failed:', err.message);
-  process.exit(1); 
-});
+seed().catch(err => { console.error(err); process.exit(1); });
