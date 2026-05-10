@@ -1,0 +1,78 @@
+<%- include('../partials/head') %>
+<div class="dashboard-layout">
+  <%- include('../partials/admin-sidebar', { active: 'deposits' }) %>
+  <div class="dashboard-main">
+    <div class="dashboard-topbar"><h4 class="mb-0">Manage Deposits</h4></div>
+    <div class="dashboard-content">
+      <%- include('../partials/flash') %>
+      <div class="dash-card">
+        <div class="table-responsive">
+          <table class="table dash-table">
+            <thead>
+              <tr>
+                <th>User</th>
+                <th>Channel</th>
+                <th>Sent From (Ref)</th>
+                <th>Amount</th>
+                <th>Proof</th>
+                <th>Status</th>
+                <th>Date</th>
+                <th>Action</th>
+              </tr>
+            </thead>
+            <tbody>
+              <% deposits.forEach(d => { %>
+              <tr>
+                <td>
+                  <strong><%= d.user ? d.user.username : 'N/A' %></strong>
+                  <br><small class="text-muted"><%= d.user ? d.user.email : '' %></small>
+                </td>
+                <td><span class="badge bg-secondary"><%= d.channel %></span></td>
+                <td>
+                  <% if (d.walletAddress) { %>
+                    <code class="small text-break" style="font-size:0.72rem;max-width:140px;display:block;">
+                      <%= d.walletAddress %>
+                    </code>
+                  <% } else { %>
+                    <span class="text-muted">—</span>
+                  <% } %>
+                </td>
+                <td><strong>$<%= d.amount.toFixed(2) %></strong></td>
+                <td>
+                  <% if (d.proofImage) { %>
+                  <a href="<%= d.proofImage %>" target="_blank" class="btn btn-xs btn-outline-info">
+                    <i class="fas fa-image"></i> View
+                  </a>
+                  <% } else { %><span class="text-muted">—</span><% } %>
+                </td>
+                <td>
+                  <span class="badge bg-<%= d.status === 'approved' ? 'success' : d.status === 'rejected' ? 'danger' : 'warning text-dark' %>">
+                    <%= d.status %>
+                  </span>
+                </td>
+                <td class="text-muted small"><%= new Date(d.createdAt).toLocaleDateString() %></td>
+                <td>
+                  <% if (d.status === 'pending') { %>
+                  <form action="/admin/deposits/<%= d._id %>/approve" method="POST" class="d-inline">
+                    <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+                    <button class="btn btn-xs btn-success me-1">Approve</button>
+                  </form>
+                  <form action="/admin/deposits/<%= d._id %>/reject" method="POST" class="d-inline">
+                    <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+                    <button class="btn btn-xs btn-danger">Reject</button>
+                  </form>
+                  <% } else { %><span class="text-muted">—</span><% } %>
+                </td>
+              </tr>
+              <% }) %>
+              <% if (!deposits.length) { %>
+              <tr><td colspan="8" class="text-center py-4 text-muted">No deposits.</td></tr>
+              <% } %>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+<%- include('../partials/footer') %>

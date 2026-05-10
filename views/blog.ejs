@@ -1,0 +1,26 @@
+<%- include('partials/head') %>
+<%- include('partials/navbar') %>
+<section class="page-hero"><div class="container"><h1>News & Blog</h1><p>Latest updates from LucrativeETF</p></div></section>
+<section class="section-padding">
+  <div class="container"><div class="row">
+    <% if (blogs.length > 0) { %>
+    <% blogs.forEach(b => { %>
+    <div class="col-lg-4 col-md-6 mb-4">
+      <div class="blog-card">
+        <% if (b.image) { %><img src="<%= b.image %>" alt="<%= b.headline %>" class="blog-img" loading="lazy">
+        <% } else { %><div class="blog-img-placeholder"><i class="fas fa-newspaper"></i></div><% } %>
+        <div class="blog-body">
+          <p class="blog-date"><i class="far fa-calendar me-1"></i><%= new Date(b.createdAt).toLocaleDateString() %></p>
+          <h5><%= b.headline %></h5>
+          <p><%= b.intro %></p>
+          <a href="/blog/<%= b._id %>" class="btn-link">Read More <i class="fas fa-arrow-right"></i></a>
+        </div>
+      </div>
+    </div>
+    <% }) %>
+    <% } else { %>
+    <div class="col-12 text-center py-5"><p class="text-muted">No blog posts yet.</p></div>
+    <% } %>
+  </div></div>
+</section>
+<%- include('partials/footer') %>

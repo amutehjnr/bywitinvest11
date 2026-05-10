@@ -1,0 +1,15 @@
+<%- include('partials/head') %>
+<%- include('partials/navbar') %>
+<section class="page-hero"><div class="container"><h1><%= post.headline %></h1></div></section>
+<section class="section-padding">
+  <div class="container"><div class="row justify-content-center"><div class="col-lg-8">
+    <% if (post.image) { %>
+      <img src="<%= post.image %>" alt="<%= post.headline %>" class="img-fluid rounded mb-4 w-100" loading="lazy">
+    <% } %>
+    <p class="text-muted"><i class="far fa-calendar me-1"></i><%= new Date(post.createdAt).toLocaleDateString() %></p>
+    <p class="lead"><%= post.intro %></p>
+    <div class="blog-body-content"><%- post.body %></div>
+    <div class="mt-4"><a href="/blog" class="btn btn-outline-theme"><i class="fas fa-arrow-left me-2"></i>Back to Blog</a></div>
+  </div></div></div>
+</section>
+<%- include('partials/footer') %>

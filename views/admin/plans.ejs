@@ -1,0 +1,84 @@
+<%- include('../partials/head') %>
+<div class="dashboard-layout">
+  <%- include('../partials/admin-sidebar', { active: 'plans' }) %>
+  <div class="dashboard-main">
+    <div class="dashboard-topbar"><h4 class="mb-0">Manage Investment Plans</h4></div>
+    <div class="dashboard-content">
+      <%- include('../partials/flash') %>
+      <div class="row">
+        <div class="col-lg-4 mb-4">
+          <div class="dash-card">
+            <div class="dash-card-header"><h6>Add New Plan</h6></div>
+            <form action="/admin/plans" method="POST">
+              <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+              <div class="mb-3">
+                <label class="form-label">Plan Name</label>
+                <input type="text" name="name" class="form-control" placeholder="e.g. Platinum" maxlength="60" required>
+              </div>
+              <div class="mb-3">
+                <label class="form-label">Rate <span class="text-muted small">(decimal: 0.065 = 6.5%)</span></label>
+                <input type="number" name="rate" class="form-control" step="0.001" min="0.001" max="1"
+                       placeholder="0.065" required>
+              </div>
+              <div class="row">
+                <div class="col-6 mb-3">
+                  <label class="form-label">Min ($)</label>
+                  <input type="number" name="minAmount" class="form-control" placeholder="500" min="1" required>
+                </div>
+                <div class="col-6 mb-3">
+                  <label class="form-label">Max ($)</label>
+                  <input type="number" name="maxAmount" class="form-control" placeholder="5000" min="1" required>
+                </div>
+              </div>
+              <div class="mb-3">
+                <label class="form-label">Duration</label>
+                <select name="duration" class="form-select">
+                  <option value="Daily">Daily</option>
+                  <option value="Weekly" selected>Weekly</option>
+                  <option value="Monthly">Monthly</option>
+                </select>
+              </div>
+              <button type="submit" class="btn btn-theme w-100">Add Plan</button>
+            </form>
+          </div>
+        </div>
+        <div class="col-lg-8">
+          <div class="dash-card">
+            <div class="table-responsive">
+              <table class="table dash-table">
+                <thead><tr><th>Name</th><th>Rate</th><th>Min</th><th>Max</th><th>Duration</th><th>Status</th><th>Actions</th></tr></thead>
+                <tbody>
+                  <% plans.forEach(p => { %>
+                  <tr>
+                    <td><strong><%= p.name %></strong></td>
+                    <td><%= (p.rate * 100).toFixed(1) %>%</td>
+                    <td>$<%= p.minAmount.toLocaleString() %></td>
+                    <td>$<%= p.maxAmount.toLocaleString() %></td>
+                    <td><%= p.duration %></td>
+                    <td><span class="badge bg-<%= p.isActive ? 'success' : 'secondary' %>">
+                      <%= p.isActive ? 'Active' : 'Inactive' %>
+                    </span></td>
+                    <td>
+                      <form action="/admin/plans/<%= p._id %>/toggle" method="POST" class="d-inline">
+                        <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+                        <button class="btn btn-xs btn-outline-warning me-1" title="Toggle"><i class="fas fa-toggle-on"></i></button>
+                      </form>
+                      <form action="/admin/plans/<%= p._id %>/delete" method="POST" class="d-inline"
+                            onsubmit="return confirm('Delete this plan?')">
+                        <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+                        <button class="btn btn-xs btn-outline-danger"><i class="fas fa-trash"></i></button>
+                      </form>
+                    </td>
+                  </tr>
+                  <% }) %>
+                  <% if (!plans.length) { %><tr><td colspan="7" class="text-center py-4 text-muted">No plans yet.</td></tr><% } %>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+<%- include('../partials/footer') %>

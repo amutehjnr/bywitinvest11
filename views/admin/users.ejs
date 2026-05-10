@@ -1,0 +1,93 @@
+<%- include('../partials/head') %>
+<div class="dashboard-layout">
+  <%- include('../partials/admin-sidebar', { active: 'users' }) %>
+  <div class="dashboard-main">
+    <div class="dashboard-topbar"><h4 class="mb-0">Manage Users</h4></div>
+    <div class="dashboard-content">
+      <%- include('../partials/flash') %>
+      <div class="dash-card">
+        <div class="table-responsive">
+          <table class="table dash-table">
+            <thead>
+              <tr><th>#</th><th>Username</th><th>Email</th><th>Balance</th><th>Role</th><th>Status</th><th>Joined</th><th>Actions</th></tr>
+            </thead>
+            <tbody>
+              <% users.forEach((u, i) => { %>
+              <tr>
+                <td><%= i + 1 %></td>
+                <td><strong><%= u.username %></strong></td>
+                <td><%= u.email %></td>
+                <td>$<%= u.balance.toFixed(2) %></td>
+                <td><span class="badge bg-<%= u.role === 'admin' ? 'primary' : 'secondary' %>"><%= u.role %></span></td>
+                <td><span class="badge bg-<%= u.isActive ? 'success' : 'danger' %>"><%= u.isActive ? 'Active' : 'Inactive' %></span></td>
+                <td class="text-muted small"><%= new Date(u.createdAt).toLocaleDateString() %></td>
+                <td>
+                  <% if (u.role !== 'admin') { %>
+                  <button class="btn btn-xs btn-outline-success me-1" data-bs-toggle="modal"
+                          data-bs-target="#creditModal" data-user-id="<%= u._id %>"
+                          data-user-name="<%= u.username %>" title="Credit balance">
+                    <i class="fas fa-plus"></i>
+                  </button>
+                  <form action="/admin/users/<%= u._id %>/toggle" method="POST" class="d-inline">
+                    <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+                    <button class="btn btn-xs btn-outline-warning me-1" title="Toggle active">
+                      <i class="fas fa-power-off"></i>
+                    </button>
+                  </form>
+                  <form action="/admin/users/<%= u._id %>/delete" method="POST" class="d-inline"
+                        onsubmit="return confirm('Delete this user permanently?')">
+                    <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+                    <button class="btn btn-xs btn-outline-danger" title="Delete user">
+                      <i class="fas fa-trash"></i>
+                    </button>
+                  </form>
+                  <% } else { %>
+                  <span class="text-muted small">Admin</span>
+                  <% } %>
+                </td>
+              </tr>
+              <% }) %>
+              <% if (!users.length) { %>
+              <tr><td colspan="8" class="text-center py-4 text-muted">No users.</td></tr>
+              <% } %>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Credit Modal -->
+<div class="modal fade" id="creditModal" tabindex="-1">
+  <div class="modal-dialog modal-sm">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h6 class="modal-title">Credit Balance — <span id="creditUserName"></span></h6>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <form id="creditForm" method="POST" action="">
+        <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+        <div class="modal-body">
+          <div class="input-group">
+            <span class="input-group-text">$</span>
+            <input type="number" name="amount" class="form-control"
+                   placeholder="Amount" step="0.01" min="0.01" max="1000000" required>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-sm btn-success">Credit</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+<%- include('../partials/footer') %>
+<script>
+document.getElementById('creditModal').addEventListener('show.bs.modal', function (e) {
+  const btn = e.relatedTarget;
+  document.getElementById('creditUserName').textContent = btn.dataset.userName;
+  document.getElementById('creditForm').action = '/admin/users/' + btn.dataset.userId + '/credit';
+});
+</script>

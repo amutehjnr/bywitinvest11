@@ -1,0 +1,23 @@
+<%- include('partials/head') %>
+<%- include('partials/navbar') %>
+<section class="page-hero"><div class="container"><h1>Frequently Asked Questions</h1></div></section>
+<section class="section-padding">
+  <div class="container"><div class="row justify-content-center"><div class="col-lg-8">
+    <div class="accordion" id="faqAccordion">
+      <% faqs.forEach((faq, i) => { %>
+      <div class="accordion-item">
+        <h2 class="accordion-header">
+          <button class="accordion-button <%= i !== 0 ? 'collapsed' : '' %>" type="button"
+                  data-bs-toggle="collapse" data-bs-target="#faq<%= i %>">
+            <%= faq.question %>
+          </button>
+        </h2>
+        <div id="faq<%= i %>" class="accordion-collapse collapse <%= i === 0 ? 'show' : '' %>" data-bs-parent="#faqAccordion">
+          <div class="accordion-body"><%= faq.answer %></div>
+        </div>
+      </div>
+      <% }) %>
+    </div>
+  </div></div></div>
+</section>
+<%- include('partials/footer') %>

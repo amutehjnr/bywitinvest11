@@ -1,0 +1,138 @@
+<%- include('../partials/head') %>
+<div class="dashboard-layout">
+  <%- include('../partials/sidebar', { active: 'withdraw' }) %>
+  <div class="dashboard-main">
+    <div class="dashboard-topbar">
+      <button class="sidebar-toggle d-lg-none me-2"><i class="fas fa-bars"></i></button>
+      <h4 class="mb-0">Withdraw Funds</h4>
+    </div>
+    <div class="dashboard-content">
+      <%- include('../partials/flash') %>
+      <div class="row">
+        <div class="col-lg-5 mb-4">
+          <!-- Save Wallet -->
+          <div class="dash-card mb-4">
+            <div class="dash-card-header"><h6><i class="fas fa-save me-2 text-green"></i>Save Wallet Address</h6></div>
+            <form action="/dashboard/wallets" method="POST">
+              <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+              <div class="mb-3">
+                <label class="form-label">Wallet Type</label>
+                <select name="channel" class="form-select" required>
+                  <option value="BTC">Bitcoin (BTC)</option>
+                  <option value="ETH">Ethereum (ETH)</option>
+                  <option value="USDT">USDT</option>
+                </select>
+              </div>
+              <div class="mb-3">
+                <label class="form-label">Wallet Address</label>
+                <input type="text" name="address" class="form-control"
+                       placeholder="Your wallet address" maxlength="200" required>
+              </div>
+              <button type="submit" class="btn btn-outline-theme w-100">Save Wallet</button>
+            </form>
+            <% if (wallets.length > 0) { %>
+            <hr>
+            <p class="section-mini-title mb-2">Saved Wallets</p>
+            <% wallets.forEach(w => { %>
+            <div class="d-flex align-items-center justify-content-between py-1">
+              <span class="badge bg-secondary me-2"><%= w.channel %></span>
+              <code class="small text-truncate flex-grow-1"><%= w.address %></code>
+            </div>
+            <% }) %>
+            <% } %>
+          </div>
+
+          <!-- Request Withdrawal -->
+          <div class="dash-card">
+            <div class="dash-card-header"><h6><i class="fas fa-money-bill-wave me-2 text-green"></i>Request Withdrawal</h6></div>
+            <div class="alert alert-info small mb-3">
+              Available balance: <strong>$<%= user.balance.toFixed(2) %></strong>
+            </div>
+            <form action="/dashboard/withdraw" method="POST">
+              <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+              <div class="mb-3">
+                <label class="form-label">Wallet Channel</label>
+                <select name="channel" id="wdChannel" class="form-select" required>
+                  <option value="BTC">Bitcoin (BTC)</option>
+                  <option value="ETH">Ethereum (ETH)</option>
+                  <option value="USDT">USDT</option>
+                </select>
+              </div>
+              <div class="mb-3">
+                <label class="form-label">Receiving Wallet Address</label>
+                <input type="text" name="walletAddress" id="wdAddress" class="form-control"
+                       placeholder="Paste your receiving address" maxlength="200" required>
+                <% if (wallets.length > 0) { %>
+                <div class="mt-1">
+                  <span class="text-muted small">Saved: </span>
+                  <% wallets.forEach(w => { %>
+                  <button type="button" class="btn btn-xs btn-outline-secondary me-1 use-saved-wallet"
+                          data-channel="<%= w.channel %>" data-address="<%= w.address %>">
+                    <%= w.channel %>
+                  </button>
+                  <% }) %>
+                </div>
+                <% } %>
+              </div>
+              <div class="mb-3">
+                <label class="form-label">Amount (USD)</label>
+                <div class="input-group">
+                  <span class="input-group-text">$</span>
+                  <input type="number" name="amount" class="form-control"
+                         step="0.01" min="1" max="<%= user.balance %>"
+                         placeholder="0.00" required>
+                </div>
+              </div>
+              <button type="submit" class="btn btn-theme w-100">
+                <i class="fas fa-paper-plane me-2"></i>Request Withdrawal
+              </button>
+            </form>
+          </div>
+        </div>
+
+        <!-- Withdrawal History -->
+        <div class="col-lg-7">
+          <div class="dash-card">
+            <div class="dash-card-header"><h6><i class="fas fa-history me-2 text-green"></i>Withdrawal History</h6></div>
+            <div class="table-responsive">
+              <table class="table dash-table">
+                <thead><tr><th>Channel</th><th>Wallet</th><th>Amount</th><th>Status</th><th>Date</th></tr></thead>
+                <tbody>
+                  <% if (withdrawals.length > 0) { %>
+                  <% withdrawals.forEach(w => { %>
+                  <tr>
+                    <td><span class="badge bg-secondary"><%= w.channel %></span></td>
+                    <td><code class="small"><%= w.walletAddress.substring(0, 16) %>…</code></td>
+                    <td><strong>$<%= w.amount.toFixed(2) %></strong></td>
+                    <td>
+                      <span class="badge bg-<%= w.status === 'approved' ? 'success' : w.status === 'rejected' ? 'danger' : 'warning text-dark' %>">
+                        <%= w.status %>
+                      </span>
+                    </td>
+                    <td class="text-muted small"><%= new Date(w.createdAt).toLocaleDateString() %></td>
+                  </tr>
+                  <% }) %>
+                  <% } else { %>
+                  <tr><td colspan="5" class="text-center py-4 text-muted">
+                    <i class="fas fa-inbox fa-2x mb-2 d-block opacity-25"></i>No withdrawals yet.
+                  </td></tr>
+                  <% } %>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+<%- include('../partials/footer') %>
+<script>
+// Pre-fill address from saved wallet buttons
+document.querySelectorAll('.use-saved-wallet').forEach(btn => {
+  btn.addEventListener('click', function () {
+    document.getElementById('wdAddress').value = this.dataset.address;
+    document.getElementById('wdChannel').value  = this.dataset.channel;
+  });
+});
+</script>

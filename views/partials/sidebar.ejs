@@ -1,0 +1,21 @@
+<div class="dashboard-sidebar">
+  <div class="sidebar-brand">
+    <a href="/"><i class="fas fa-chart-line me-2"></i>LucrativeETF</a>
+  </div>
+  <div class="sidebar-user">
+    <div class="sidebar-avatar"><%= user.firstName ? user.firstName.charAt(0).toUpperCase() : user.username.charAt(0).toUpperCase() %></div>
+    <div>
+      <strong><%= user.firstName || user.username %></strong>
+      <small>$<%= user.balance.toFixed(2) %></small>
+    </div>
+  </div>
+  <nav class="sidebar-nav">
+    <a href="/dashboard" class="sidebar-link <%= typeof active !== 'undefined' && active === 'home' ? 'active' : '' %>"><i class="fas fa-tachometer-alt"></i> Dashboard</a>
+    <a href="/dashboard/invest" class="sidebar-link <%= typeof active !== 'undefined' && active === 'invest' ? 'active' : '' %>"><i class="fas fa-seedling"></i> Invest Now</a>
+    <a href="/dashboard/deposit" class="sidebar-link <%= typeof active !== 'undefined' && active === 'deposit' ? 'active' : '' %>"><i class="fas fa-arrow-down-to-line"></i> Deposit</a>
+    <a href="/dashboard/withdraw" class="sidebar-link <%= typeof active !== 'undefined' && active === 'withdraw' ? 'active' : '' %>"><i class="fas fa-money-bill-wave"></i> Withdraw</a>
+    <a href="/dashboard/transactions" class="sidebar-link <%= typeof active !== 'undefined' && active === 'transactions' ? 'active' : '' %>"><i class="fas fa-history"></i> Transactions</a>
+    <a href="/dashboard/profile" class="sidebar-link <%= typeof active !== 'undefined' && active === 'profile' ? 'active' : '' %>"><i class="fas fa-user-cog"></i> Profile</a>
+    <a href="/auth/logout" class="sidebar-link text-danger"><i class="fas fa-sign-out-alt"></i> Logout</a>
+  </nav>
+</div>

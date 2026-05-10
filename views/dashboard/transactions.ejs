@@ -1,0 +1,114 @@
+<%- include('../partials/head') %>
+<div class="dashboard-layout">
+  <%- include('../partials/sidebar', { active: 'transactions' }) %>
+  <div class="dashboard-main">
+    <div class="dashboard-topbar">
+      <button class="sidebar-toggle d-lg-none me-2"><i class="fas fa-bars"></i></button>
+      <h4 class="mb-0">Transaction History</h4>
+    </div>
+    <div class="dashboard-content">
+      <ul class="nav nav-tabs mb-4" id="txTabs">
+        <li class="nav-item">
+          <a class="nav-link active" data-bs-toggle="tab" href="#tab-investments">
+            Investments <span class="badge bg-secondary ms-1"><%= investments.length %></span>
+          </a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link" data-bs-toggle="tab" href="#tab-deposits">
+            Deposits <span class="badge bg-secondary ms-1"><%= deposits.length %></span>
+          </a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link" data-bs-toggle="tab" href="#tab-withdrawals">
+            Withdrawals <span class="badge bg-secondary ms-1"><%= withdrawals.length %></span>
+          </a>
+        </li>
+      </ul>
+      <div class="tab-content">
+        <!-- Investments -->
+        <div class="tab-pane fade show active" id="tab-investments">
+          <div class="dash-card">
+            <div class="table-responsive">
+              <table class="table dash-table">
+                <thead><tr><th>Plan</th><th>Amount</th><th>Rate</th><th>Status</th><th>Date</th></tr></thead>
+                <tbody>
+                  <% investments.forEach(inv => { %>
+                  <tr>
+                    <td><%= inv.planName %></td>
+                    <td>$<%= inv.amount.toFixed(2) %></td>
+                    <td><%= (inv.rate * 100).toFixed(1) %>%</td>
+                    <td><span class="badge bg-<%= inv.isMature ? 'success' : 'warning text-dark' %>">
+                      <%= inv.isMature ? 'Matured' : 'Active' %>
+                    </span></td>
+                    <td class="text-muted small"><%= new Date(inv.createdAt).toLocaleDateString() %></td>
+                  </tr>
+                  <% }) %>
+                  <% if (!investments.length) { %>
+                  <tr><td colspan="5" class="text-center py-4 text-muted">No investments yet.</td></tr>
+                  <% } %>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+        <!-- Deposits -->
+        <div class="tab-pane fade" id="tab-deposits">
+          <div class="dash-card">
+            <div class="table-responsive">
+              <table class="table dash-table">
+                <thead><tr><th>Channel</th><th>Sent From</th><th>Amount</th><th>Status</th><th>Date</th></tr></thead>
+                <tbody>
+                  <% deposits.forEach(d => { %>
+                  <tr>
+                    <td><span class="badge bg-secondary"><%= d.channel %></span></td>
+                    <td>
+                      <% if (d.walletAddress) { %>
+                        <code class="small"><%= d.walletAddress.substring(0,20) %>…</code>
+                      <% } else { %><span class="text-muted">—</span><% } %>
+                    </td>
+                    <td>$<%= d.amount.toFixed(2) %></td>
+                    <td><span class="badge bg-<%= d.status === 'approved' ? 'success' : d.status === 'rejected' ? 'danger' : 'warning text-dark' %>">
+                      <%= d.status %>
+                    </span></td>
+                    <td class="text-muted small"><%= new Date(d.createdAt).toLocaleDateString() %></td>
+                  </tr>
+                  <% }) %>
+                  <% if (!deposits.length) { %>
+                  <tr><td colspan="5" class="text-center py-4 text-muted">No deposits yet.</td></tr>
+                  <% } %>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+        <!-- Withdrawals -->
+        <div class="tab-pane fade" id="tab-withdrawals">
+          <div class="dash-card">
+            <div class="table-responsive">
+              <table class="table dash-table">
+                <thead><tr><th>Channel</th><th>Wallet</th><th>Amount</th><th>Status</th><th>Date</th></tr></thead>
+                <tbody>
+                  <% withdrawals.forEach(w => { %>
+                  <tr>
+                    <td><span class="badge bg-secondary"><%= w.channel %></span></td>
+                    <td><code class="small"><%= w.walletAddress.substring(0,16) %>…</code></td>
+                    <td>$<%= w.amount.toFixed(2) %></td>
+                    <td><span class="badge bg-<%= w.status === 'approved' ? 'success' : w.status === 'rejected' ? 'danger' : 'warning text-dark' %>">
+                      <%= w.status %>
+                    </span></td>
+                    <td class="text-muted small"><%= new Date(w.createdAt).toLocaleDateString() %></td>
+                  </tr>
+                  <% }) %>
+                  <% if (!withdrawals.length) { %>
+                  <tr><td colspan="5" class="text-center py-4 text-muted">No withdrawals yet.</td></tr>
+                  <% } %>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+<%- include('../partials/footer') %>

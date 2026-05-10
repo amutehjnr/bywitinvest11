@@ -1,0 +1,343 @@
+<%- include('partials/head') %>
+<%- include('partials/navbar') %>
+
+<!-- ── Hero Slider ─────────────────────────────────────────────────────────── -->
+<section class="hero-section" id="home">
+  <div id="heroCarousel" class="carousel slide carousel-fade" data-bs-ride="carousel">
+    <div class="carousel-indicators">
+      <button type="button" data-bs-target="#heroCarousel" data-bs-slide-to="0" class="active"></button>
+      <button type="button" data-bs-target="#heroCarousel" data-bs-slide-to="1"></button>
+      <button type="button" data-bs-target="#heroCarousel" data-bs-slide-to="2"></button>
+      <button type="button" data-bs-target="#heroCarousel" data-bs-slide-to="3"></button>
+    </div>
+    <div class="carousel-inner">
+      <div class="carousel-item active" style="background-image:url('/images/hero1.jpg')">
+        <div class="carousel-caption-custom">
+          <h1 class="animate__animated animate__fadeInDown">Welcome to LucrativeETF</h1>
+          <p class="animate__animated animate__fadeInUp">Maximize Your Earnings with Smart Investments</p>
+          <div class="hero-btns animate__animated animate__fadeInUp">
+            <a href="/auth/login" class="btn btn-theme me-3">Login</a>
+            <a href="/auth/register" class="btn btn-outline-light">Register</a>
+          </div>
+        </div>
+      </div>
+      <div class="carousel-item" style="background-image:url('/images/hero2.jpg')">
+        <div class="carousel-caption-custom">
+          <h1>Guaranteed Returns</h1>
+          <p>Invest with Confidence – Enjoy Competitive ROI</p>
+          <div class="hero-btns">
+            <a href="/auth/login" class="btn btn-theme me-3">Login</a>
+            <a href="/auth/register" class="btn btn-outline-light">Register</a>
+          </div>
+        </div>
+      </div>
+      <div class="carousel-item" style="background-image:url('/images/hero3.jpg')">
+        <div class="carousel-caption-custom">
+          <h1>Diversify Your Portfolio</h1>
+          <p>Explore a Wide Range of ETFs – Tailored for Everyone</p>
+          <div class="hero-btns">
+            <a href="/plans" class="btn btn-theme me-3">View Plans</a>
+            <a href="/auth/register" class="btn btn-outline-light">Get Started</a>
+          </div>
+        </div>
+      </div>
+      <div class="carousel-item" style="background-image:url('/images/hero4.jpg')">
+        <div class="carousel-caption-custom">
+          <h1>Secure and Reliable</h1>
+          <p>Your Investments Are Safe with Us – Trusted by Thousands</p>
+          <div class="hero-btns">
+            <a href="/auth/register" class="btn btn-theme">Join Now</a>
+          </div>
+        </div>
+      </div>
+    </div>
+    <button class="carousel-control-prev" type="button" data-bs-target="#heroCarousel" data-bs-slide="prev">
+      <span class="carousel-control-prev-icon"></span>
+    </button>
+    <button class="carousel-control-next" type="button" data-bs-target="#heroCarousel" data-bs-slide="next">
+      <span class="carousel-control-next-icon"></span>
+    </button>
+  </div>
+</section>
+
+<!-- ── Stats Bar ──────────────────────────────────────────────────────────── -->
+<section class="stats-bar">
+  <div class="container">
+    <div class="row text-center g-0">
+      <div class="col-6 col-md-3 stat-item"><h3>5000+</h3><p>Active Investors</p></div>
+      <div class="col-6 col-md-3 stat-item"><h3>$12M+</h3><p>Total Invested</p></div>
+      <div class="col-6 col-md-3 stat-item"><h3>99.9%</h3><p>Uptime</p></div>
+      <div class="col-6 col-md-3 stat-item"><h3>24/7</h3><p>Support</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- ── About ──────────────────────────────────────────────────────────────── -->
+<section class="about-section section-padding" id="about">
+  <div class="container">
+    <div class="row align-items-center mb-5">
+      <div class="col-lg-6 mb-4 mb-lg-0">
+        <span class="section-label">About us</span>
+        <h2 class="section-title">About LucrativeETF</h2>
+        <p>Welcome to LucrativeETF, your premier destination for smart and profitable investing. Founded with the vision of democratizing financial growth, LucrativeETF is dedicated to providing individuals from all walks of life the opportunity to invest wisely and reap significant returns.</p>
+        <p>Our platform is built on the principles of transparency, security, and expert management, ensuring that your investments are in the best hands.</p>
+        <a href="/plans" class="btn btn-theme mt-3">Explore Plans</a>
+      </div>
+      <div class="col-lg-6">
+        <img src="/images/about1.jpg" alt="About LucrativeETF" class="img-fluid rounded shadow" loading="lazy">
+      </div>
+    </div>
+    <div class="row">
+      <div class="col-md-6 mb-4">
+        <div class="about-card"><i class="fas fa-eye"></i><h4>Our Vision</h4>
+          <p>To be a leading force in the investment industry, fostering a community where investors thrive.</p></div>
+      </div>
+      <div class="col-md-6 mb-4">
+        <div class="about-card"><i class="fas fa-bullseye"></i><h4>Our Mission</h4>
+          <p>To simplify the investment process and make high returns accessible to everyone through our curated ETF portfolio.</p></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── Investment Plans ───────────────────────────────────────────────────── -->
+<section class="plans-section section-padding bg-light" id="plans">
+  <div class="container">
+    <div class="section-header text-center mb-5">
+      <span class="section-label">Investment</span>
+      <h2 class="section-title">Our Investment Plans</h2>
+      <p>Choose a plan that fits your financial goals and start earning today</p>
+    </div>
+    <div class="row justify-content-center">
+      <% plans.forEach((plan, i) => { %>
+      <div class="col-lg-3 col-md-4 col-sm-6 mb-4">
+        <div class="plan-card <%= i === 2 ? 'plan-card--featured' : '' %>">
+          <% if (i === 2) { %><div class="plan-badge">Popular</div><% } %>
+          <div class="plan-header">
+            <h4><%= plan.name %></h4>
+            <div class="plan-rate"><%= (plan.rate * 100).toFixed(1) %><span>% ROI</span></div>
+            <small><%= plan.duration %></small>
+          </div>
+          <div class="plan-body">
+            <ul>
+              <li><i class="fas fa-check"></i> Min: $<%= plan.minAmount.toLocaleString() %></li>
+              <li><i class="fas fa-check"></i> Max: $<%= plan.maxAmount.toLocaleString() %></li>
+              <li><i class="fas fa-check"></i> <%= plan.duration %> Returns</li>
+              <li><i class="fas fa-check"></i> Instant Withdrawal</li>
+              <li><i class="fas fa-check"></i> 24/7 Support</li>
+            </ul>
+          </div>
+          <div class="plan-footer"><a href="/auth/register" class="btn btn-theme w-100">Invest Now</a></div>
+        </div>
+      </div>
+      <% }) %>
+      <% if (plans.length === 0) { %>
+      <div class="col-12 text-center"><p>Investment plans coming soon.</p></div>
+      <% } %>
+    </div>
+  </div>
+</section>
+
+<!-- ── Services ───────────────────────────────────────────────────────────── -->
+<section class="services-section section-padding" id="services">
+  <div class="container">
+    <div class="section-header text-center mb-5">
+      <span class="section-label">Our Services</span>
+      <h2 class="section-title">Comprehensive Investment Services</h2>
+    </div>
+    <div class="row">
+      <% const services = [
+        { icon: 'fas fa-user-tie',      title: 'Account Management',  desc: 'Personalized account management to help you achieve your financial goals with ease.' },
+        { icon: 'fas fa-chart-bar',     title: 'Investment Strategy',  desc: 'Tailored investment strategies to maximize your returns and minimize risks.' },
+        { icon: 'fas fa-exchange-alt',  title: 'Forex Trading',        desc: 'Expert-driven forex trading to grow your capital in global currency markets.' },
+        { icon: 'fas fa-shield-alt',    title: 'Security',             desc: 'We prioritize your security with advanced encryption and secure trading platforms.' },
+        { icon: 'fas fa-certificate',   title: 'Compliance',           desc: 'We adhere to the highest standards in investment management and regulation.' },
+        { icon: 'fas fa-microchip',     title: 'Customized Solutions', desc: 'Every investment is unique — we tailor solutions to meet your specific needs.' }
+      ]; %>
+      <% services.forEach(s => { %>
+      <div class="col-lg-4 col-md-6 mb-4">
+        <div class="service-card">
+          <div class="service-icon"><i class="<%= s.icon %>"></i></div>
+          <h5><%= s.title %></h5><p><%= s.desc %></p>
+        </div>
+      </div>
+      <% }) %>
+    </div>
+  </div>
+</section>
+
+<!-- ── Why Choose Us ──────────────────────────────────────────────────────── -->
+<section class="why-section section-padding bg-dark-custom">
+  <div class="container">
+    <div class="row align-items-center">
+      <div class="col-lg-5 mb-5 mb-lg-0">
+        <span class="section-label text-green">Why Choose Us</span>
+        <h2 class="section-title text-white">The LucrativeETF Advantage</h2>
+        <p class="text-light">Our professional team of seasoned traders and analysts brings deep market knowledge and experience to every investment decision.</p>
+      </div>
+      <div class="col-lg-7">
+        <div class="row">
+          <% const whys = [
+            { icon: 'fas fa-users',      title: 'Expert Team',       desc: 'Seasoned traders and analysts managing your portfolio 24/7.' },
+            { icon: 'fas fa-lock',       title: 'Secure Platform',   desc: 'Bank-grade encryption and secure infrastructure.' },
+            { icon: 'fas fa-chart-line', title: 'Consistent Returns', desc: 'Reliable returns backed by proven trading strategies.' },
+            { icon: 'fas fa-globe',      title: 'Transparency',      desc: 'Full visibility into your investments and earnings at all times.' }
+          ]; %>
+          <% whys.forEach(w => { %>
+          <div class="col-md-6 mb-4">
+            <div class="why-card"><i class="<%= w.icon %>"></i><h6><%= w.title %></h6><p><%= w.desc %></p></div>
+          </div>
+          <% }) %>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── Testimonials ───────────────────────────────────────────────────────── -->
+<section class="testimonials-section section-padding" id="testimonials">
+  <div class="container">
+    <div class="section-header text-center mb-5">
+      <span class="section-label">Testimonials</span>
+      <h2 class="section-title">What Our Investors Say</h2>
+    </div>
+    <div class="row">
+      <% testimonials.forEach(t => { %>
+      <div class="col-lg-4 col-md-6 mb-4">
+        <div class="testimonial-card">
+          <i class="fas fa-quote-left quote-icon"></i>
+          <p>"<%= t.message %>"</p>
+          <div class="testimonial-author">
+            <% if (t.photo) { %>
+            <img src="<%= t.photo %>" alt="<%= t.name %>" loading="lazy">
+            <% } else { %>
+            <div class="avatar-placeholder"><%= t.name.charAt(0) %></div>
+            <% } %>
+            <div><strong><%= t.name %></strong><small><%= t.location %></small></div>
+          </div>
+        </div>
+      </div>
+      <% }) %>
+    </div>
+  </div>
+</section>
+
+<!-- ── Blog ───────────────────────────────────────────────────────────────── -->
+<% if (blogs.length > 0) { %>
+<section class="blog-section section-padding bg-light" id="blog">
+  <div class="container">
+    <div class="section-header text-center mb-5">
+      <span class="section-label">Latest News</span>
+      <h2 class="section-title">From Our Blog</h2>
+    </div>
+    <div class="row">
+      <% blogs.forEach(b => { %>
+      <div class="col-lg-4 col-md-6 mb-4">
+        <div class="blog-card">
+          <% if (b.image) { %>
+          <img src="<%= b.image %>" alt="<%= b.headline %>" class="blog-img" loading="lazy">
+          <% } else { %>
+          <div class="blog-img-placeholder"><i class="fas fa-newspaper"></i></div>
+          <% } %>
+          <div class="blog-body">
+            <p class="blog-date"><i class="far fa-calendar me-1"></i><%= new Date(b.createdAt).toLocaleDateString() %></p>
+            <h5><%= b.headline %></h5><p><%= b.intro %></p>
+            <a href="/blog/<%= b._id %>" class="btn-link">Read More <i class="fas fa-arrow-right"></i></a>
+          </div>
+        </div>
+      </div>
+      <% }) %>
+    </div>
+    <div class="text-center mt-3"><a href="/blog" class="btn btn-theme">View All Posts</a></div>
+  </div>
+</section>
+<% } %>
+
+<!-- ── FAQ ────────────────────────────────────────────────────────────────── -->
+<% if (faqs.length > 0) { %>
+<section class="faq-section section-padding" id="faq">
+  <div class="container">
+    <div class="section-header text-center mb-5">
+      <span class="section-label">FAQ</span>
+      <h2 class="section-title">Frequently Asked Questions</h2>
+    </div>
+    <div class="row justify-content-center"><div class="col-lg-8">
+      <div class="accordion" id="faqAccordion">
+        <% faqs.forEach((faq, i) => { %>
+        <div class="accordion-item">
+          <h2 class="accordion-header">
+            <button class="accordion-button <%= i !== 0 ? 'collapsed' : '' %>" type="button"
+                    data-bs-toggle="collapse" data-bs-target="#faqH<%= i %>">
+              <%= faq.question %>
+            </button>
+          </h2>
+          <div id="faqH<%= i %>" class="accordion-collapse collapse <%= i === 0 ? 'show' : '' %>" data-bs-parent="#faqAccordion">
+            <div class="accordion-body"><%= faq.answer %></div>
+          </div>
+        </div>
+        <% }) %>
+      </div>
+    </div></div>
+  </div>
+</section>
+<% } %>
+
+<!-- ── Contact ────────────────────────────────────────────────────────────── -->
+<section class="contact-section section-padding bg-light" id="contact">
+  <div class="container">
+    <div class="section-header text-center mb-5">
+      <span class="section-label">Get In Touch</span>
+      <h2 class="section-title">Contact Us</h2>
+    </div>
+    <%- include('partials/flash') %>
+    <div class="row">
+      <div class="col-lg-5 mb-4 mb-lg-0">
+        <div class="contact-info-box">
+          <h4>We're Here For You</h4>
+          <p>Our dedicated team is eager to assist you with any questions about our investment services.</p>
+          <ul class="contact-details">
+            <% if (typeof siteInfo !== 'undefined' && siteInfo.address) { %>
+            <li><i class="fas fa-map-marker-alt"></i> <%= siteInfo.address %></li>
+            <% } %>
+            <% if (typeof siteInfo !== 'undefined' && siteInfo.phone) { %>
+            <li><i class="fas fa-phone"></i> <%= siteInfo.phone %></li>
+            <% } %>
+            <% if (typeof siteInfo !== 'undefined' && siteInfo.email) { %>
+            <li><i class="fas fa-envelope"></i> <%= siteInfo.email %></li>
+            <% } %>
+          </ul>
+        </div>
+      </div>
+      <div class="col-lg-7">
+        <form action="/contact" method="POST" class="contact-form" novalidate>
+          <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+          <div class="row">
+            <div class="col-md-6 mb-3">
+              <input type="text" name="name" class="form-control" placeholder="Your Name *" maxlength="100" required>
+            </div>
+            <div class="col-md-6 mb-3">
+              <input type="email" name="email" class="form-control" placeholder="Your Email *" required>
+            </div>
+          </div>
+          <div class="row">
+            <div class="col-md-6 mb-3">
+              <input type="tel" name="phone" class="form-control" placeholder="Phone Number" maxlength="20">
+            </div>
+            <div class="col-md-6 mb-3">
+              <input type="text" name="subject" class="form-control" placeholder="Subject" maxlength="200">
+            </div>
+          </div>
+          <div class="mb-3">
+            <textarea name="message" class="form-control" rows="5" placeholder="Your Message *"
+                      maxlength="3000" required></textarea>
+          </div>
+          <button type="submit" class="btn btn-theme w-100">
+            Send Message <i class="fas fa-paper-plane ms-2"></i>
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+</section>
+
+<%- include('partials/footer') %>

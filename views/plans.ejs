@@ -1,0 +1,32 @@
+<%- include('partials/head') %>
+<%- include('partials/navbar') %>
+<section class="page-hero"><div class="container"><h1>Investment Plans</h1><p>Choose the plan that works for you</p></div></section>
+<section class="section-padding">
+  <div class="container">
+    <div class="row justify-content-center">
+      <% plans.forEach((plan, i) => { %>
+      <div class="col-lg-3 col-md-4 col-sm-6 mb-4">
+        <div class="plan-card <%= i === 2 ? 'plan-card--featured' : '' %>">
+          <% if (i === 2) { %><div class="plan-badge">Popular</div><% } %>
+          <div class="plan-header">
+            <h4><%= plan.name %></h4>
+            <div class="plan-rate"><%= (plan.rate * 100).toFixed(1) %><span>%</span></div>
+            <small><%= plan.duration %></small>
+          </div>
+          <div class="plan-body">
+            <ul>
+              <li><i class="fas fa-check"></i> Min: $<%= plan.minAmount.toLocaleString() %></li>
+              <li><i class="fas fa-check"></i> Max: $<%= plan.maxAmount.toLocaleString() %></li>
+              <li><i class="fas fa-check"></i> <%= plan.duration %> Returns</li>
+              <li><i class="fas fa-check"></i> Instant Withdrawal</li>
+              <li><i class="fas fa-check"></i> 24/7 Support</li>
+            </ul>
+          </div>
+          <div class="plan-footer"><a href="/auth/register" class="btn btn-theme w-100">Get Started</a></div>
+        </div>
+      </div>
+      <% }) %>
+    </div>
+  </div>
+</section>
+<%- include('partials/footer') %>

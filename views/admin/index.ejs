@@ -1,0 +1,88 @@
+<%- include('../partials/head') %>
+<div class="dashboard-layout">
+  <%- include('../partials/admin-sidebar', { active: 'home' }) %>
+  <div class="dashboard-main">
+    <div class="dashboard-topbar"><h4 class="mb-0">Admin Dashboard</h4></div>
+    <div class="dashboard-content">
+      <%- include('../partials/flash') %>
+      <div class="row mb-4">
+        <div class="col-6 col-lg-3 mb-3">
+          <div class="stat-card"><div class="stat-icon bg-blue"><i class="fas fa-users"></i></div>
+            <div><p>Total Users</p><h5><%= users %></h5></div></div>
+        </div>
+        <div class="col-6 col-lg-3 mb-3">
+          <div class="stat-card"><div class="stat-icon bg-orange"><i class="fas fa-clock"></i></div>
+            <div><p>Pending Deposits</p><h5><%= pendingDeposits %></h5></div></div>
+        </div>
+        <div class="col-6 col-lg-3 mb-3">
+          <div class="stat-card"><div class="stat-icon bg-purple"><i class="fas fa-clock"></i></div>
+            <div><p>Pending Withdrawals</p><h5><%= pendingWithdrawals %></h5></div></div>
+        </div>
+        <div class="col-6 col-lg-3 mb-3">
+          <div class="stat-card"><div class="stat-icon bg-green"><i class="fas fa-envelope"></i></div>
+            <div><p>Unread Messages</p><h5><%= contacts %></h5></div></div>
+        </div>
+      </div>
+
+      <div class="row">
+        <div class="col-lg-6 mb-4">
+          <div class="dash-card">
+            <div class="dash-card-header"><h6>Recent Deposits</h6><a href="/admin/deposits">View All</a></div>
+            <div class="table-responsive">
+              <table class="table table-sm">
+                <thead><tr><th>User</th><th>Amount</th><th>Status</th><th>Action</th></tr></thead>
+                <tbody>
+                  <% deposits.forEach(d => { %>
+                  <tr>
+                    <td><%= d.user ? d.user.username : 'N/A' %></td>
+                    <td>$<%= d.amount.toFixed(2) %></td>
+                    <td><span class="badge bg-<%= d.status === 'approved' ? 'success' : d.status === 'rejected' ? 'danger' : 'warning text-dark' %>"><%= d.status %></span></td>
+                    <td>
+                      <% if (d.status === 'pending') { %>
+                      <form action="/admin/deposits/<%= d._id %>/approve" method="POST" class="d-inline">
+                        <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+                        <button class="btn btn-xs btn-success">✓</button>
+                      </form>
+                      <% } %>
+                    </td>
+                  </tr>
+                  <% }) %>
+                  <% if (!deposits.length) { %><tr><td colspan="4" class="text-center py-3 text-muted">No deposits.</td></tr><% } %>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+        <div class="col-lg-6 mb-4">
+          <div class="dash-card">
+            <div class="dash-card-header"><h6>Recent Withdrawals</h6><a href="/admin/withdrawals">View All</a></div>
+            <div class="table-responsive">
+              <table class="table table-sm">
+                <thead><tr><th>User</th><th>Amount</th><th>Status</th><th>Action</th></tr></thead>
+                <tbody>
+                  <% withdrawals.forEach(w => { %>
+                  <tr>
+                    <td><%= w.user ? w.user.username : 'N/A' %></td>
+                    <td>$<%= w.amount.toFixed(2) %></td>
+                    <td><span class="badge bg-<%= w.status === 'approved' ? 'success' : w.status === 'rejected' ? 'danger' : 'warning text-dark' %>"><%= w.status %></span></td>
+                    <td>
+                      <% if (w.status === 'pending') { %>
+                      <form action="/admin/withdrawals/<%= w._id %>/approve" method="POST" class="d-inline">
+                        <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+                        <button class="btn btn-xs btn-success">✓</button>
+                      </form>
+                      <% } %>
+                    </td>
+                  </tr>
+                  <% }) %>
+                  <% if (!withdrawals.length) { %><tr><td colspan="4" class="text-center py-3 text-muted">No withdrawals.</td></tr><% } %>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+<%- include('../partials/footer') %>

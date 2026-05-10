@@ -1,0 +1,43 @@
+<%- include('../partials/head') %>
+<div class="dashboard-layout">
+  <%- include('../partials/admin-sidebar', { active: 'faq' }) %>
+  <div class="dashboard-main">
+    <div class="dashboard-topbar"><h4 class="mb-0">Manage FAQ</h4></div>
+    <div class="dashboard-content">
+      <%- include('../partials/flash') %>
+      <div class="row">
+        <div class="col-lg-5 mb-4">
+          <div class="dash-card">
+            <div class="dash-card-header"><h6>Add FAQ</h6></div>
+            <form action="/admin/faq" method="POST">
+              <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+              <div class="mb-3"><label class="form-label">Question</label>
+                <input type="text" name="question" class="form-control" maxlength="300" required></div>
+              <div class="mb-3"><label class="form-label">Answer</label>
+                <textarea name="answer" class="form-control" rows="4" maxlength="2000" required></textarea></div>
+              <button type="submit" class="btn btn-theme w-100">Add FAQ</button>
+            </form>
+          </div>
+        </div>
+        <div class="col-lg-7">
+          <div class="dash-card">
+            <% faqs.forEach(f => { %>
+            <div class="mb-3 pb-3 border-bottom">
+              <div class="d-flex justify-content-between align-items-start">
+                <strong class="flex-grow-1 me-3"><%= f.question %></strong>
+                <form action="/admin/faq/<%= f._id %>/delete" method="POST" onsubmit="return confirm('Delete?')">
+                  <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+                  <button class="btn btn-xs btn-outline-danger"><i class="fas fa-trash"></i></button>
+                </form>
+              </div>
+              <p class="mb-0 small text-muted mt-1"><%= f.answer.substring(0, 120) %>…</p>
+            </div>
+            <% }) %>
+            <% if (!faqs.length) { %><p class="text-center py-4 text-muted">No FAQs yet.</p><% } %>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+<%- include('../partials/footer') %>

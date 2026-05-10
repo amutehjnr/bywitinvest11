@@ -1,0 +1,104 @@
+<%- include('../partials/head') %>
+<div class="dashboard-layout">
+  <%- include('../partials/sidebar', { active: 'invest' }) %>
+  <div class="dashboard-main">
+    <div class="dashboard-topbar">
+      <button class="sidebar-toggle d-lg-none me-2"><i class="fas fa-bars"></i></button>
+      <h4 class="mb-0">Invest Now</h4>
+    </div>
+    <div class="dashboard-content">
+      <%- include('../partials/flash') %>
+      <div class="alert alert-info">
+        <i class="fas fa-info-circle me-2"></i>
+        Your current balance is <strong>$<%= user.balance.toFixed(2) %></strong>.
+        Ensure you have sufficient balance before investing.
+      </div>
+      <div class="row">
+        <% plans.forEach((plan, i) => { %>
+        <div class="col-lg-4 col-md-6 mb-4">
+          <div class="plan-card <%= i === 2 ? 'plan-card--featured' : '' %>">
+            <% if (i === 2) { %><div class="plan-badge">Popular</div><% } %>
+            <div class="plan-header">
+              <h4><%= plan.name %></h4>
+              <div class="plan-rate"><%= (plan.rate * 100).toFixed(1) %><span>%</span></div>
+              <small><%= plan.duration %> Returns</small>
+            </div>
+            <div class="plan-body">
+              <ul>
+                <li><i class="fas fa-check"></i> Min: $<%= plan.minAmount.toLocaleString() %></li>
+                <li><i class="fas fa-check"></i> Max: $<%= plan.maxAmount.toLocaleString() %></li>
+                <li><i class="fas fa-check"></i> Rate: <%= (plan.rate * 100).toFixed(1) %>%</li>
+                <li><i class="fas fa-check"></i> <%= plan.duration %> payout</li>
+                <li><i class="fas fa-check"></i> Instant start</li>
+              </ul>
+            </div>
+            <div class="plan-footer">
+              <button class="btn btn-theme w-100" data-bs-toggle="modal" data-bs-target="#investModal"
+                data-plan-id="<%= plan._id %>" data-plan-name="<%= plan.name %>"
+                data-plan-min="<%= plan.minAmount %>" data-plan-max="<%= plan.maxAmount %>">
+                Invest Now
+              </button>
+            </div>
+          </div>
+        </div>
+        <% }) %>
+        <% if (!plans.length) { %>
+        <div class="col-12 text-center py-5">
+          <p class="text-muted">No active investment plans at the moment. Check back soon.</p>
+        </div>
+        <% } %>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Invest Modal -->
+<div class="modal fade" id="investModal" tabindex="-1" aria-labelledby="investModalLabel" aria-modal="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="investModalLabel">Invest in <span id="modalPlanName"></span></h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <form action="/dashboard/invest" method="POST">
+        <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+        <div class="modal-body">
+          <input type="hidden" name="planId" id="modalPlanId">
+          <div class="mb-3">
+            <label class="form-label">
+              Amount
+              <span class="text-muted small">($<span id="modalMin"></span> – $<span id="modalMax"></span>)</span>
+            </label>
+            <div class="input-group">
+              <span class="input-group-text">$</span>
+              <input type="number" name="amount" id="modalAmount" class="form-control"
+                     step="0.01" min="1" required>
+            </div>
+          </div>
+          <p class="text-muted small mb-0">
+            Available balance: <strong>$<%= user.balance.toFixed(2) %></strong>
+          </p>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-theme">Confirm Investment</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+<%- include('../partials/footer') %>
+<script>
+document.getElementById('investModal').addEventListener('show.bs.modal', function (e) {
+  const btn = e.relatedTarget;
+  document.getElementById('modalPlanId').value  = btn.dataset.planId;
+  document.getElementById('modalPlanName').textContent = btn.dataset.planName;
+  document.getElementById('modalMin').textContent = Number(btn.dataset.planMin).toLocaleString();
+  document.getElementById('modalMax').textContent = Number(btn.dataset.planMax).toLocaleString();
+  const amt = document.getElementById('modalAmount');
+  amt.min = btn.dataset.planMin;
+  amt.max = btn.dataset.planMax;
+  amt.value = '';
+  amt.placeholder = `Min $${Number(btn.dataset.planMin).toLocaleString()}`;
+});
+</script>

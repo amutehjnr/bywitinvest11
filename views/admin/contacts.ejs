@@ -1,0 +1,30 @@
+<%- include('../partials/head') %>
+<div class="dashboard-layout">
+  <%- include('../partials/admin-sidebar', { active: 'contacts' }) %>
+  <div class="dashboard-main">
+    <div class="dashboard-topbar"><h4 class="mb-0">Contact Messages</h4></div>
+    <div class="dashboard-content">
+      <div class="dash-card">
+        <div class="table-responsive">
+          <table class="table dash-table">
+            <thead><tr><th>Name</th><th>Email</th><th>Phone</th><th>Subject</th><th>Message</th><th>Date</th></tr></thead>
+            <tbody>
+              <% contacts.forEach(c => { %>
+              <tr>
+                <td><%= c.name %></td>
+                <td><a href="mailto:<%= c.email %>"><%= c.email %></a></td>
+                <td><%= c.phone || '—' %></td>
+                <td><%= c.subject || '—' %></td>
+                <td class="small"><%= c.message.substring(0, 80) %><%= c.message.length > 80 ? '…' : '' %></td>
+                <td class="text-muted small"><%= new Date(c.createdAt).toLocaleDateString() %></td>
+              </tr>
+              <% }) %>
+              <% if (!contacts.length) { %><tr><td colspan="6" class="text-center py-4 text-muted">No messages.</td></tr><% } %>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+<%- include('../partials/footer') %>

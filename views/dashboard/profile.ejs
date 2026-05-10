@@ -1,0 +1,105 @@
+<%- include('../partials/head') %>
+<div class="dashboard-layout">
+  <%- include('../partials/sidebar', { active: 'profile' }) %>
+  <div class="dashboard-main">
+    <div class="dashboard-topbar">
+      <button class="sidebar-toggle d-lg-none me-2"><i class="fas fa-bars"></i></button>
+      <h4 class="mb-0">My Profile</h4>
+    </div>
+    <div class="dashboard-content">
+      <%- include('../partials/flash') %>
+      <% if (typeof errors !== 'undefined' && errors.length > 0) { %>
+      <div class="alert alert-danger">
+        <% errors.forEach(e => { %><div><i class="fas fa-times-circle me-1"></i><%= e.msg %></div><% }) %>
+      </div>
+      <% } %>
+      <div class="row">
+        <div class="col-lg-7 mb-4">
+          <div class="dash-card">
+            <div class="dash-card-header"><h6>Profile Information</h6></div>
+            <form action="/dashboard/profile" method="POST">
+              <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+              <div class="row">
+                <div class="col-md-6 mb-3">
+                  <label class="form-label">First Name</label>
+                  <input type="text" name="firstName" class="form-control"
+                         value="<%= user.firstName %>" maxlength="50">
+                </div>
+                <div class="col-md-6 mb-3">
+                  <label class="form-label">Last Name</label>
+                  <input type="text" name="lastName" class="form-control"
+                         value="<%= user.lastName %>" maxlength="50">
+                </div>
+              </div>
+              <div class="mb-3">
+                <label class="form-label">Username</label>
+                <input type="text" class="form-control bg-light" value="<%= user.username %>" disabled>
+              </div>
+              <div class="mb-3">
+                <label class="form-label">Email</label>
+                <input type="email" class="form-control bg-light" value="<%= user.email %>" disabled>
+              </div>
+              <div class="row">
+                <div class="col-md-6 mb-3">
+                  <label class="form-label">Country</label>
+                  <input type="text" name="country" class="form-control"
+                         value="<%= user.country %>" maxlength="60">
+                </div>
+                <div class="col-md-6 mb-3">
+                  <label class="form-label">Phone</label>
+                  <input type="tel" name="phone" class="form-control"
+                         value="<%= user.phone %>" maxlength="20">
+                </div>
+              </div>
+              <button type="submit" class="btn btn-theme">Update Profile</button>
+            </form>
+          </div>
+        </div>
+        <div class="col-lg-5 mb-4">
+          <div class="dash-card mb-4">
+            <div class="dash-card-header"><h6>Change Password</h6></div>
+            <form action="/dashboard/change-password" method="POST">
+              <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+              <div class="mb-3">
+                <label class="form-label">Current Password</label>
+                <input type="password" name="currentPassword" class="form-control"
+                       autocomplete="current-password" required>
+              </div>
+              <div class="mb-3">
+                <label class="form-label">New Password</label>
+                <input type="password" name="newPassword" class="form-control"
+                       placeholder="Min 8 chars" autocomplete="new-password" required>
+                <div class="form-text">Must have uppercase, lowercase and a number.</div>
+              </div>
+              <div class="mb-3">
+                <label class="form-label">Confirm New Password</label>
+                <input type="password" name="confirmPassword" class="form-control"
+                       autocomplete="new-password" required>
+              </div>
+              <button type="submit" class="btn btn-theme w-100">Change Password</button>
+            </form>
+          </div>
+          <div class="dash-card">
+            <div class="dash-card-header"><h6>Account Summary</h6></div>
+            <ul class="list-unstyled mb-0">
+              <li class="d-flex justify-content-between py-2 border-bottom">
+                <span class="text-muted">Balance</span><strong>$<%= user.balance.toFixed(2) %></strong>
+              </li>
+              <li class="d-flex justify-content-between py-2 border-bottom">
+                <span class="text-muted">Total Invested</span><strong>$<%= user.totalInvested.toFixed(2) %></strong>
+              </li>
+              <li class="d-flex justify-content-between py-2 border-bottom">
+                <span class="text-muted">Bonus</span><strong>$<%= user.bonus.toFixed(2) %></strong>
+              </li>
+              <li class="d-flex justify-content-between py-2">
+                <span class="text-muted">Member Since</span>
+                <strong><%= new Date(user.createdAt).toLocaleDateString() %></strong>
+              </li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+<%- include('../partials/footer') %>

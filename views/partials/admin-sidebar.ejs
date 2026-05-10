@@ -1,0 +1,20 @@
+<div class="dashboard-sidebar admin-sidebar">
+  <div class="sidebar-brand">
+    <a href="/admin"><i class="fas fa-cog me-2"></i>Admin Panel</a>
+  </div>
+  <nav class="sidebar-nav">
+    <a href="/admin" class="sidebar-link <%= typeof active !== 'undefined' && active === 'home' ? 'active' : '' %>"><i class="fas fa-tachometer-alt"></i> Dashboard</a>
+    <a href="/admin/users" class="sidebar-link <%= typeof active !== 'undefined' && active === 'users' ? 'active' : '' %>"><i class="fas fa-users"></i> Users</a>
+    <a href="/admin/deposits" class="sidebar-link <%= typeof active !== 'undefined' && active === 'deposits' ? 'active' : '' %>"><i class="fas fa-arrow-down"></i> Deposits</a>
+    <a href="/admin/withdrawals" class="sidebar-link <%= typeof active !== 'undefined' && active === 'withdrawals' ? 'active' : '' %>"><i class="fas fa-arrow-up"></i> Withdrawals</a>
+    <a href="/admin/plans" class="sidebar-link <%= typeof active !== 'undefined' && active === 'plans' ? 'active' : '' %>"><i class="fas fa-layer-group"></i> Plans</a>
+    <a href="/admin/blog" class="sidebar-link <%= typeof active !== 'undefined' && active === 'blog' ? 'active' : '' %>"><i class="fas fa-newspaper"></i> Blog</a>
+    <a href="/admin/team" class="sidebar-link <%= typeof active !== 'undefined' && active === 'team' ? 'active' : '' %>"><i class="fas fa-user-friends"></i> Team</a>
+    <a href="/admin/testimonials" class="sidebar-link <%= typeof active !== 'undefined' && active === 'testimonials' ? 'active' : '' %>"><i class="fas fa-comments"></i> Testimonials</a>
+    <a href="/admin/faq" class="sidebar-link <%= typeof active !== 'undefined' && active === 'faq' ? 'active' : '' %>"><i class="fas fa-question-circle"></i> FAQ</a>
+    <a href="/admin/contacts" class="sidebar-link <%= typeof active !== 'undefined' && active === 'contacts' ? 'active' : '' %>"><i class="fas fa-envelope"></i> Contacts</a>
+    <a href="/admin/settings" class="sidebar-link <%= typeof active !== 'undefined' && active === 'settings' ? 'active' : '' %>"><i class="fas fa-cog"></i> Settings</a>
+    <a href="/" class="sidebar-link"><i class="fas fa-home"></i> View Site</a>
+    <a href="/auth/logout" class="sidebar-link text-danger"><i class="fas fa-sign-out-alt"></i> Logout</a>
+  </nav>
+</div>

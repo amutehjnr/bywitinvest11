@@ -1,0 +1,52 @@
+<%- include('../partials/head') %>
+<div class="dashboard-layout">
+  <%- include('../partials/admin-sidebar', { active: 'testimonials' }) %>
+  <div class="dashboard-main">
+    <div class="dashboard-topbar"><h4 class="mb-0">Manage Testimonials</h4></div>
+    <div class="dashboard-content">
+      <%- include('../partials/flash') %>
+      <div class="row">
+        <div class="col-lg-5 mb-4">
+          <div class="dash-card">
+            <div class="dash-card-header"><h6>Add Testimonial</h6></div>
+            <form action="/admin/testimonials" method="POST" enctype="multipart/form-data">
+              <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+              <div class="mb-3"><label class="form-label">Name</label>
+                <input type="text" name="name" class="form-control" maxlength="80" required></div>
+              <div class="mb-3"><label class="form-label">Location</label>
+                <input type="text" name="location" class="form-control" placeholder="e.g. User from USA" maxlength="100"></div>
+              <div class="mb-3"><label class="form-label">Message</label>
+                <textarea name="message" class="form-control" rows="4" maxlength="1000" required></textarea></div>
+              <div class="mb-3"><label class="form-label">Photo</label>
+                <input type="file" name="photo" class="form-control" accept="image/*"></div>
+              <button type="submit" class="btn btn-theme w-100">Add Testimonial</button>
+            </form>
+          </div>
+        </div>
+        <div class="col-lg-7">
+          <div class="dash-card">
+            <% testimonials.forEach(t => { %>
+            <div class="d-flex align-items-start mb-3 pb-3 border-bottom">
+              <% if (t.photo) { %>
+                <img src="<%= t.photo %>" class="rounded-circle me-3" style="width:45px;height:45px;object-fit:cover;">
+              <% } else { %>
+                <div class="avatar-placeholder me-3" style="width:45px;height:45px;font-size:1rem;"><%= t.name.charAt(0) %></div>
+              <% } %>
+              <div class="flex-grow-1">
+                <strong><%= t.name %></strong> <small class="text-muted ms-2"><%= t.location %></small>
+                <p class="mb-1 small">"<%= t.message.substring(0, 100) %>…"</p>
+              </div>
+              <form action="/admin/testimonials/<%= t._id %>/delete" method="POST" onsubmit="return confirm('Delete?')">
+                <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+                <button class="btn btn-xs btn-outline-danger"><i class="fas fa-trash"></i></button>
+              </form>
+            </div>
+            <% }) %>
+            <% if (!testimonials.length) { %><p class="text-center py-4 text-muted">No testimonials yet.</p><% } %>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+<%- include('../partials/footer') %>

@@ -1,0 +1,111 @@
+<%- include('../partials/head') %>
+<%- include('../partials/navbar') %>
+
+<section class="auth-section">
+  <div class="container">
+    <div class="row justify-content-center">
+      <div class="col-lg-7 col-md-9">
+        <div class="auth-card">
+          <div class="auth-header">
+            <i class="fas fa-user-plus auth-icon"></i>
+            <h3>Create Account</h3>
+            <p>Join thousands of smart investors</p>
+          </div>
+          <% if (errors.length > 0) { %>
+          <div class="alert alert-danger">
+            <% errors.forEach(e => { %><div><i class="fas fa-times-circle me-1"></i><%= e.msg %></div><% }) %>
+          </div>
+          <% } %>
+          <form action="/auth/register" method="POST" autocomplete="off" novalidate>
+            <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+            <div class="row">
+              <div class="col-md-6 mb-3">
+                <label class="form-label">First Name *</label>
+                <input type="text" name="firstName" class="form-control" placeholder="First name"
+                       value="<%= old.firstName || '' %>" maxlength="50" required>
+              </div>
+              <div class="col-md-6 mb-3">
+                <label class="form-label">Last Name *</label>
+                <input type="text" name="lastName" class="form-control" placeholder="Last name"
+                       value="<%= old.lastName || '' %>" maxlength="50" required>
+              </div>
+            </div>
+            <div class="mb-3">
+              <label class="form-label">Username *</label>
+              <div class="input-group">
+                <span class="input-group-text"><i class="fas fa-user"></i></span>
+                <input type="text" name="username" class="form-control" placeholder="3-30 chars, letters/numbers/_"
+                       value="<%= old.username || '' %>" minlength="3" maxlength="30" pattern="[a-zA-Z0-9_]+" required>
+              </div>
+            </div>
+            <div class="mb-3">
+              <label class="form-label">Email Address *</label>
+              <div class="input-group">
+                <span class="input-group-text"><i class="fas fa-envelope"></i></span>
+                <input type="email" name="email" class="form-control" placeholder="Your email address"
+                       value="<%= old.email || '' %>" autocomplete="email" required>
+              </div>
+            </div>
+            <div class="row">
+              <div class="col-md-6 mb-3">
+                <label class="form-label">Country</label>
+                <input type="text" name="country" class="form-control" placeholder="Your country"
+                       value="<%= old.country || '' %>" maxlength="60">
+              </div>
+              <div class="col-md-6 mb-3">
+                <label class="form-label">Phone</label>
+                <input type="tel" name="phone" class="form-control" placeholder="+1 234 567 890"
+                       value="<%= old.phone || '' %>" maxlength="20">
+              </div>
+            </div>
+            <div class="row">
+              <div class="col-md-6 mb-3">
+                <label class="form-label">Password *</label>
+                <input type="password" name="password" id="regPassword" class="form-control"
+                       placeholder="Min 8 chars" minlength="8" autocomplete="new-password" required>
+                <div id="pwdStrength" class="mt-1"></div>
+                <div class="form-text">Must have uppercase, lowercase and a number.</div>
+              </div>
+              <div class="col-md-6 mb-3">
+                <label class="form-label">Confirm Password *</label>
+                <input type="password" name="confirmPassword" class="form-control"
+                       placeholder="Repeat password" autocomplete="new-password" required>
+              </div>
+            </div>
+            <div class="mb-3 form-check">
+              <input type="checkbox" class="form-check-input" id="agree" required>
+              <label class="form-check-label" for="agree">
+                I agree to the <a href="/terms" target="_blank">Terms & Conditions</a> and
+                <a href="/privacy" target="_blank">Privacy Policy</a>
+              </label>
+            </div>
+            <button type="submit" class="btn btn-theme w-100 btn-lg">
+              Create Account <i class="fas fa-arrow-right ms-2"></i>
+            </button>
+          </form>
+          <div class="auth-footer">
+            <p>Already have an account? <a href="/auth/login" class="auth-link">Login Here</a></p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<%- include('../partials/footer') %>
+<script>
+// Password strength indicator
+document.getElementById('regPassword').addEventListener('input', function () {
+  const v = this.value;
+  const el = document.getElementById('pwdStrength');
+  let s = 0;
+  if (v.length >= 8) s++;
+  if (/[A-Z]/.test(v)) s++;
+  if (/[a-z]/.test(v)) s++;
+  if (/\d/.test(v)) s++;
+  if (/[^A-Za-z0-9]/.test(v)) s++;
+  const labels = ['', 'Weak', 'Fair', 'Good', 'Strong', 'Very Strong'];
+  const colors = ['', '#e74c3c', '#f0a500', '#3498db', '#1a9e5f', '#0d6e46'];
+  el.innerHTML = v ? `<small style="color:${colors[s]};font-weight:600">${labels[s]}</small>` : '';
+});
+</script>

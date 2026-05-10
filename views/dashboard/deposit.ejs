@@ -1,0 +1,261 @@
+<%- include('../partials/head') %>
+<div class="dashboard-layout">
+  <%- include('../partials/sidebar', { active: 'deposit' }) %>
+  <div class="dashboard-main">
+    <div class="dashboard-topbar">
+      <button class="sidebar-toggle d-lg-none me-2"><i class="fas fa-bars"></i></button>
+      <h4 class="mb-0">Deposit Funds</h4>
+    </div>
+    <div class="dashboard-content">
+      <%- include('../partials/flash') %>
+
+      <div class="row">
+        <!-- ── Deposit Form ── -->
+        <div class="col-lg-5 mb-4">
+          <div class="dash-card">
+            <div class="dash-card-header"><h6><i class="fas fa-arrow-down-to-line me-2 text-green"></i>Make a Deposit</h6></div>
+
+            <form action="/dashboard/deposit" method="POST" enctype="multipart/form-data" novalidate>
+              <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+
+              <!-- Step 1: Select Channel -->
+              <div class="mb-3">
+                <label class="form-label fw-semibold">1. Select Payment Channel</label>
+                <select name="channel" class="form-select" id="channelSelect" required>
+                  <option value="">-- Choose channel --</option>
+                  <option value="BTC">Bitcoin (BTC)</option>
+                  <option value="ETH">Ethereum (ETH)</option>
+                  <option value="USDT">USDT (TRC20)</option>
+                  <option value="Bank">Bank Transfer</option>
+                </select>
+              </div>
+
+              <!-- Platform wallet display (where user sends funds TO) -->
+              <% if (siteInfo.bitcoinAddress || siteInfo.ethereumAddress || siteInfo.usdtAddress) { %>
+              <div id="walletDisplay" class="d-none mb-3">
+                <label class="form-label fw-semibold">2. Send to this Address</label>
+
+                <% if (siteInfo.bitcoinAddress) { %>
+                <div id="walletBTC" class="wallet-box d-none">
+                  <div class="wallet-label"><i class="fab fa-bitcoin text-warning me-2"></i>Bitcoin (BTC) Wallet</div>
+                  <code class="wallet-addr" data-copy><%= siteInfo.bitcoinAddress %></code>
+                  <% if (siteInfo.btcQR) { %><img src="<%= siteInfo.btcQR %>" class="qr-img mt-2"><% } %>
+                </div>
+                <% } %>
+
+                <% if (siteInfo.ethereumAddress) { %>
+                <div id="walletETH" class="wallet-box d-none">
+                  <div class="wallet-label"><i class="fab fa-ethereum text-info me-2"></i>Ethereum (ETH) Wallet</div>
+                  <code class="wallet-addr" data-copy><%= siteInfo.ethereumAddress %></code>
+                  <% if (siteInfo.ethQR) { %><img src="<%= siteInfo.ethQR %>" class="qr-img mt-2"><% } %>
+                </div>
+                <% } %>
+
+                <% if (siteInfo.usdtAddress) { %>
+                <div id="walletUSDT" class="wallet-box d-none">
+                  <div class="wallet-label"><i class="fas fa-dollar-sign text-success me-2"></i>USDT (TRC20) Wallet</div>
+                  <code class="wallet-addr" data-copy><%= siteInfo.usdtAddress %></code>
+                  <% if (siteInfo.usdtQR) { %><img src="<%= siteInfo.usdtQR %>" class="qr-img mt-2"><% } %>
+                </div>
+                <% } %>
+
+                <div id="walletBank" class="wallet-box d-none">
+                  <div class="wallet-label"><i class="fas fa-university text-secondary me-2"></i>Bank Transfer</div>
+                  <p class="text-muted small mb-0">Please contact support for bank transfer details.</p>
+                </div>
+              </div>
+              <% } %>
+
+              <!-- Step 3: Wallet you're sending FROM -->
+              <div class="mb-3">
+                <label class="form-label fw-semibold" id="walletSentLabel">
+                  3. Your Sending Wallet / Reference
+                  <span class="text-muted fw-normal small ms-1">(optional but recommended)</span>
+                </label>
+                <div class="input-group">
+                  <span class="input-group-text"><i class="fas fa-wallet"></i></span>
+                  <input
+                    type="text"
+                    name="walletSentTo"
+                    id="walletSentTo"
+                    class="form-control"
+                    placeholder="e.g. your BTC address or bank reference"
+                    maxlength="200"
+                  >
+                </div>
+                <div class="form-text">Enter the wallet address or reference you are sending from to help us verify your payment faster.</div>
+              </div>
+
+              <!-- Step 4: Amount -->
+              <div class="mb-3">
+                <label class="form-label fw-semibold">4. Amount (USD)</label>
+                <div class="input-group">
+                  <span class="input-group-text">$</span>
+                  <input type="number" name="amount" class="form-control" placeholder="0.00"
+                         step="0.01" min="1" max="999999" required>
+                </div>
+              </div>
+
+              <!-- Step 5: Proof -->
+              <div class="mb-4">
+                <label class="form-label fw-semibold">5. Upload Payment Proof</label>
+                <input type="file" name="proof" class="form-control" accept="image/*">
+                <div class="form-text">Screenshot of your transfer (JPEG/PNG, max 5 MB)</div>
+              </div>
+
+              <button type="submit" class="btn btn-theme w-100">
+                <i class="fas fa-paper-plane me-2"></i>Submit Deposit
+              </button>
+            </form>
+          </div>
+        </div>
+
+        <!-- ── Deposit History ── -->
+        <div class="col-lg-7">
+          <div class="dash-card">
+            <div class="dash-card-header">
+              <h6><i class="fas fa-history me-2 text-green"></i>Deposit History</h6>
+            </div>
+            <div class="table-responsive">
+              <table class="table dash-table">
+                <thead>
+                  <tr>
+                    <th>Channel</th>
+                    <th>Sent From (Ref)</th>
+                    <th>Amount</th>
+                    <th>Status</th>
+                    <th>Date</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <% if (deposits.length > 0) { %>
+                    <% deposits.forEach(d => { %>
+                    <tr>
+                      <td><span class="badge bg-secondary"><%= d.channel %></span></td>
+                      <td>
+                        <% if (d.walletAddress) { %>
+                          <code class="small text-break" style="font-size:0.72rem;">
+                            <%= d.walletAddress.length > 22 ? d.walletAddress.substring(0, 22) + '…' : d.walletAddress %>
+                          </code>
+                        <% } else { %>
+                          <span class="text-muted">—</span>
+                        <% } %>
+                      </td>
+                      <td><strong>$<%= d.amount.toFixed(2) %></strong></td>
+                      <td>
+                        <span class="badge bg-<%= d.status === 'approved' ? 'success' : d.status === 'rejected' ? 'danger' : 'warning text-dark' %>">
+                          <%= d.status %>
+                        </span>
+                      </td>
+                      <td class="text-muted small"><%= new Date(d.createdAt).toLocaleDateString() %></td>
+                    </tr>
+                    <% }) %>
+                  <% } else { %>
+                  <tr>
+                    <td colspan="5" class="text-center py-4 text-muted">
+                      <i class="fas fa-inbox fa-2x mb-2 d-block opacity-25"></i>No deposits yet.
+                    </td>
+                  </tr>
+                  <% } %>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- Info box -->
+          <div class="dash-card mt-4">
+            <h6 class="mb-3"><i class="fas fa-info-circle text-green me-2"></i>How to Deposit</h6>
+            <ol class="small text-muted mb-0" style="padding-left:1.2rem;line-height:2;">
+              <li>Select your preferred payment channel above.</li>
+              <li>Copy the platform wallet address shown and send your funds.</li>
+              <li>Enter the wallet or reference you sent <strong>from</strong>.</li>
+              <li>Enter the amount you sent (in USD equivalent).</li>
+              <li>Upload a screenshot of your transfer as proof.</li>
+              <li>Submit — deposits are approved within <strong>24 hours</strong>.</li>
+            </ol>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+<%- include('../partials/footer') %>
+
+<style>
+.wallet-box {
+  background: #f0fff8;
+  border: 1px solid #b7e4cc;
+  border-radius: 10px;
+  padding: 14px 16px;
+  margin-bottom: 6px;
+}
+.wallet-label {
+  font-weight: 600;
+  font-size: 0.88rem;
+  margin-bottom: 8px;
+  color: #1a1a2e;
+}
+.wallet-addr {
+  display: block;
+  background: #fff;
+  border: 1px dashed #b7e4cc;
+  border-radius: 6px;
+  padding: 8px 12px;
+  font-size: 0.82rem;
+  word-break: break-all;
+  cursor: pointer;
+  transition: background 0.2s;
+  color: #0d6e46;
+}
+.wallet-addr:hover { background: #e6fff0; }
+.qr-img { width: 100px; border-radius: 6px; }
+</style>
+
+<script>
+(function () {
+  const sel = document.getElementById('channelSelect');
+  const display = document.getElementById('walletDisplay');
+  const boxes = {
+    BTC:  document.getElementById('walletBTC'),
+    ETH:  document.getElementById('walletETH'),
+    USDT: document.getElementById('walletUSDT'),
+    Bank: document.getElementById('walletBank')
+  };
+  const walletLabel = document.getElementById('walletSentLabel');
+  const walletInput = document.getElementById('walletSentTo');
+
+  sel.addEventListener('change', function () {
+    const v = this.value;
+    // Show / hide platform wallet display section
+    if (display) {
+      display.classList.toggle('d-none', !v || v === 'Bank');
+    }
+    // Show correct wallet box
+    Object.entries(boxes).forEach(([key, el]) => {
+      if (el) el.classList.toggle('d-none', key !== v);
+    });
+    // Update placeholder for sending-from field
+    if (walletInput) {
+      const placeholders = {
+        BTC:  'Your BTC wallet address you sent from',
+        ETH:  'Your ETH wallet address you sent from',
+        USDT: 'Your USDT wallet address you sent from',
+        Bank: 'Your bank account number or transfer reference'
+      };
+      walletInput.placeholder = placeholders[v] || 'Your wallet address or reference';
+    }
+  });
+
+  // Copy wallet address on click
+  document.querySelectorAll('.wallet-addr[data-copy]').forEach(el => {
+    el.title = 'Click to copy';
+    el.addEventListener('click', () => {
+      navigator.clipboard.writeText(el.textContent.trim()).then(() => {
+        const orig = el.textContent;
+        el.textContent = '✓ Copied!';
+        setTimeout(() => { el.textContent = orig; }, 1500);
+      });
+    });
+  });
+})();
+</script>

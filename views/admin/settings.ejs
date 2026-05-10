@@ -1,0 +1,108 @@
+<%- include('../partials/head') %>
+<div class="dashboard-layout">
+  <%- include('../partials/admin-sidebar', { active: 'settings' }) %>
+  <div class="dashboard-main">
+    <div class="dashboard-topbar"><h4 class="mb-0">Site Settings</h4></div>
+    <div class="dashboard-content">
+      <%- include('../partials/flash') %>
+      <form action="/admin/settings" method="POST" enctype="multipart/form-data">
+        <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+        <div class="row">
+          <div class="col-lg-6 mb-4">
+            <div class="dash-card">
+              <div class="dash-card-header"><h6>General Info</h6></div>
+              <div class="mb-3">
+                <label class="form-label">Site Name</label>
+                <input type="text" name="siteName" class="form-control" value="<%= siteInfo.siteName || '' %>" maxlength="60">
+              </div>
+              <div class="mb-3">
+                <label class="form-label">Tagline</label>
+                <input type="text" name="tagline" class="form-control" value="<%= siteInfo.tagline || '' %>" maxlength="150">
+              </div>
+              <div class="mb-3">
+                <label class="form-label">Phone</label>
+                <input type="text" name="phone" class="form-control" value="<%= siteInfo.phone || '' %>" maxlength="30">
+              </div>
+              <div class="mb-3">
+                <label class="form-label">Email</label>
+                <input type="email" name="email" class="form-control" value="<%= siteInfo.email || '' %>" maxlength="100">
+              </div>
+              <div class="mb-3">
+                <label class="form-label">Address</label>
+                <input type="text" name="address" class="form-control" value="<%= siteInfo.address || '' %>" maxlength="300">
+              </div>
+              <div class="mb-3">
+                <label class="form-label">Referral Bonus Rate (%)</label>
+                <input type="number" name="bonusRate" class="form-control" value="<%= siteInfo.bonusRate || 10 %>"
+                       min="0" max="100" step="0.1">
+              </div>
+              <div class="mb-3">
+                <label class="form-label">Logo</label>
+                <input type="file" name="logo" class="form-control" accept="image/*">
+                <% if (siteInfo.logo) { %>
+                  <img src="<%= siteInfo.logo %>" height="40" class="mt-2 rounded">
+                <% } %>
+              </div>
+              <div class="mb-3">
+                <label class="form-label">Favicon</label>
+                <input type="file" name="favicon" class="form-control" accept="image/*">
+              </div>
+            </div>
+          </div>
+          <div class="col-lg-6 mb-4">
+            <div class="dash-card mb-4">
+              <div class="dash-card-header"><h6>Crypto Wallets</h6></div>
+              <div class="mb-3">
+                <label class="form-label">Bitcoin (BTC) Address</label>
+                <input type="text" name="bitcoinAddress" class="form-control"
+                       value="<%= siteInfo.bitcoinAddress || '' %>" maxlength="100">
+              </div>
+              <div class="mb-3">
+                <label class="form-label">BTC QR Code</label>
+                <input type="file" name="btcQR" class="form-control" accept="image/*">
+                <% if (siteInfo.btcQR) { %><img src="<%= siteInfo.btcQR %>" height="60" class="mt-2 rounded"><% } %>
+              </div>
+              <div class="mb-3">
+                <label class="form-label">Ethereum (ETH) Address</label>
+                <input type="text" name="ethereumAddress" class="form-control"
+                       value="<%= siteInfo.ethereumAddress || '' %>" maxlength="100">
+              </div>
+              <div class="mb-3">
+                <label class="form-label">ETH QR Code</label>
+                <input type="file" name="ethQR" class="form-control" accept="image/*">
+                <% if (siteInfo.ethQR) { %><img src="<%= siteInfo.ethQR %>" height="60" class="mt-2 rounded"><% } %>
+              </div>
+              <div class="mb-3">
+                <label class="form-label">USDT Address (TRC20)</label>
+                <input type="text" name="usdtAddress" class="form-control"
+                       value="<%= siteInfo.usdtAddress || '' %>" maxlength="100">
+              </div>
+              <div class="mb-3">
+                <label class="form-label">USDT QR Code</label>
+                <input type="file" name="usdtQR" class="form-control" accept="image/*">
+                <% if (siteInfo.usdtQR) { %><img src="<%= siteInfo.usdtQR %>" height="60" class="mt-2 rounded"><% } %>
+              </div>
+            </div>
+            <div class="dash-card">
+              <div class="dash-card-header"><h6>Legal Policies</h6></div>
+              <div class="mb-3">
+                <label class="form-label">Privacy Policy <span class="text-muted small">(HTML allowed)</span></label>
+                <textarea name="privacyPolicy" class="form-control" rows="5"><%= siteInfo.privacyPolicy || '' %></textarea>
+              </div>
+              <div class="mb-3">
+                <label class="form-label">Terms & Conditions <span class="text-muted small">(HTML allowed)</span></label>
+                <textarea name="termsConditions" class="form-control" rows="5"><%= siteInfo.termsConditions || '' %></textarea>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="text-end mb-4">
+          <button type="submit" class="btn btn-theme btn-lg px-5">
+            <i class="fas fa-save me-2"></i>Save All Settings
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+<%- include('../partials/footer') %>

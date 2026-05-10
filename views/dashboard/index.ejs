@@ -1,0 +1,131 @@
+<%- include('../partials/head') %>
+<div class="dashboard-layout">
+  <%- include('../partials/sidebar', { active: 'home' }) %>
+  <div class="dashboard-main">
+    <div class="dashboard-topbar">
+      <button class="sidebar-toggle d-lg-none me-2"><i class="fas fa-bars"></i></button>
+      <h4 class="mb-0">Dashboard</h4>
+      <span class="badge bg-success ms-2">Active</span>
+    </div>
+    <div class="dashboard-content">
+      <%- include('../partials/flash') %>
+
+      <!-- Stats -->
+      <div class="row mb-4">
+        <div class="col-6 col-lg-3 mb-3">
+          <div class="stat-card">
+            <div class="stat-icon bg-green"><i class="fas fa-wallet"></i></div>
+            <div><p>Balance</p><h5>$<%= user.balance.toFixed(2) %></h5></div>
+          </div>
+        </div>
+        <div class="col-6 col-lg-3 mb-3">
+          <div class="stat-card">
+            <div class="stat-icon bg-blue"><i class="fas fa-seedling"></i></div>
+            <div><p>Total Invested</p><h5>$<%= user.totalInvested.toFixed(2) %></h5></div>
+          </div>
+        </div>
+        <div class="col-6 col-lg-3 mb-3">
+          <div class="stat-card">
+            <div class="stat-icon bg-orange"><i class="fas fa-arrow-down"></i></div>
+            <div><p>Total Deposited</p><h5>$<%= totalDeposited.toFixed(2) %></h5></div>
+          </div>
+        </div>
+        <div class="col-6 col-lg-3 mb-3">
+          <div class="stat-card">
+            <div class="stat-icon bg-purple"><i class="fas fa-arrow-up"></i></div>
+            <div><p>Total Withdrawn</p><h5>$<%= totalWithdrawn.toFixed(2) %></h5></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Quick Actions -->
+      <div class="row mb-4">
+        <div class="col-12"><h6 class="section-mini-title">Quick Actions</h6></div>
+        <div class="col-6 col-md-3 mb-2">
+          <a href="/dashboard/invest" class="quick-action-btn">
+            <i class="fas fa-seedling"></i><span>Invest</span>
+          </a>
+        </div>
+        <div class="col-6 col-md-3 mb-2">
+          <a href="/dashboard/deposit" class="quick-action-btn">
+            <i class="fas fa-plus-circle"></i><span>Deposit</span>
+          </a>
+        </div>
+        <div class="col-6 col-md-3 mb-2">
+          <a href="/dashboard/withdraw" class="quick-action-btn">
+            <i class="fas fa-money-bill-wave"></i><span>Withdraw</span>
+          </a>
+        </div>
+        <div class="col-6 col-md-3 mb-2">
+          <a href="/dashboard/transactions" class="quick-action-btn">
+            <i class="fas fa-history"></i><span>History</span>
+          </a>
+        </div>
+      </div>
+
+      <!-- Recent Investments & Deposits -->
+      <div class="row mb-4">
+        <div class="col-lg-6 mb-4">
+          <div class="dash-card">
+            <div class="dash-card-header">
+              <h6>Recent Investments</h6>
+              <a href="/dashboard/invest">+ New</a>
+            </div>
+            <div class="table-responsive">
+              <table class="table table-sm">
+                <thead><tr><th>Plan</th><th>Amount</th><th>Rate</th><th>Date</th></tr></thead>
+                <tbody>
+                  <% if (investments.length > 0) { %>
+                  <% investments.forEach(inv => { %>
+                  <tr>
+                    <td><%= inv.planName %></td>
+                    <td>$<%= inv.amount.toFixed(2) %></td>
+                    <td><span class="badge bg-success-subtle text-success"><%= (inv.rate * 100).toFixed(1) %>%</span></td>
+                    <td class="text-muted small"><%= new Date(inv.createdAt).toLocaleDateString() %></td>
+                  </tr>
+                  <% }) %>
+                  <% } else { %>
+                  <tr><td colspan="4" class="text-center text-muted py-3">
+                    No investments yet. <a href="/dashboard/invest">Invest now!</a>
+                  </td></tr>
+                  <% } %>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <div class="col-lg-6 mb-4">
+          <div class="dash-card">
+            <div class="dash-card-header">
+              <h6>Recent Deposits</h6>
+              <a href="/dashboard/deposit">+ New</a>
+            </div>
+            <div class="table-responsive">
+              <table class="table table-sm">
+                <thead><tr><th>Channel</th><th>Amount</th><th>Status</th><th>Date</th></tr></thead>
+                <tbody>
+                  <% if (deposits.length > 0) { %>
+                  <% deposits.forEach(d => { %>
+                  <tr>
+                    <td><span class="badge bg-secondary"><%= d.channel %></span></td>
+                    <td>$<%= d.amount.toFixed(2) %></td>
+                    <td><span class="badge bg-<%= d.status === 'approved' ? 'success' : d.status === 'rejected' ? 'danger' : 'warning' %>">
+                      <%= d.status %>
+                    </span></td>
+                    <td class="text-muted small"><%= new Date(d.createdAt).toLocaleDateString() %></td>
+                  </tr>
+                  <% }) %>
+                  <% } else { %>
+                  <tr><td colspan="4" class="text-center text-muted py-3">No deposits yet.</td></tr>
+                  <% } %>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+<%- include('../partials/footer') %>
