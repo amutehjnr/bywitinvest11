@@ -6,3 +6,8 @@ public/uploads/*
 *.log
 .DS_Store
 npm-debug.log*
+
+seed.js
+seed-*.js
+*.seed.js
+/seeds/
