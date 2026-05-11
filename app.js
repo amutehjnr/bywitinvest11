@@ -63,30 +63,38 @@ app.use(express.static(path.join(__dirname, 'public'), {
 }));
 
 // ── Session ───────────────────────────────────────────
+// FIX 1: Guarantee SESSION_SECRET is never null/undefined before passing
+// to MongoStore's crypto option — connect-mongo v5 crashes with
+// "Cannot read properties of null (reading 'length')" when it is.
+const SESSION_SECRET = process.env.SESSION_SECRET || (() => {
+  logger.warn('SESSION_SECRET not set – using insecure default. Set it in .env!');
+  return 'change_me_NOW_not_for_production_use_only_32chars_min';
+})();
+
 const sessionConfig = {
   name: 'sid',
-  secret: process.env.SESSION_SECRET || (() => {
-    logger.warn('SESSION_SECRET not set – using insecure default. Set it in .env!');
-    return 'change_me_NOW_not_for_production_use_only';
-  })(),
+  secret: SESSION_SECRET,
   resave: false,
   saveUninitialized: false,
   store: MongoStore.create({
     mongoUrl: process.env.MONGODB_URI,
     touchAfter: 24 * 3600,
     ttl: 7 * 24 * 60 * 60,
-    crypto: { secret: process.env.SESSION_SECRET || 'change_me' }
+    // FIX 2: Only enable crypto when we have a real secret; a weak/default
+    // secret passed to kruptein (MongoStore's crypto lib) causes the
+    // null-length crash seen in the logs.
+    ...(process.env.SESSION_SECRET
+      ? { crypto: { secret: process.env.SESSION_SECRET } }
+      : {}
+    )
   }),
   cookie: {
     maxAge: 7 * 24 * 60 * 60 * 1000,
     httpOnly: true,
-    secure: true,      // force true on Render (always HTTPS)
+    secure: isProd,   // FIX 3: was hardcoded `true`; breaks HTTP in dev/staging
     sameSite: 'lax'
   }
 };
-
-// In production with __Host- prefix the cookie name requires secure=true
-// if (isProd) sessionConfig.cookie.secure = true;
 
 app.use(session(sessionConfig));
 
@@ -96,27 +104,19 @@ app.use(flash());
 // ── CSRF Protection ───────────────────────────────────
 const csrfProtection = csrf({ cookie: false }); // store token in session
 app.use(csrfProtection);
-app.use(attachCsrf);
-
-// ── CSRF error handler ────────────────────────────────
-// NEW
-app.use((err, req, res, next) => {
-  if (err.code === 'EBADCSRFTOKEN') {
-    logger.warn(`CSRF token mismatch: IP=${req.ip} URL=${req.originalUrl}`);
-    if (req.xhr) return res.status(403).json({ error: 'Invalid CSRF token.' });
-    req.flash('error', 'Form expired or invalid. Please try again.');
-    return res.redirect(req.get('Referrer') || '/admin/settings');
-  }
-  next(err);
-});
 
 // ── Global Locals ─────────────────────────────────────
+// FIX 4: Move global locals BEFORE attachCsrf and BEFORE the CSRF error
+// handler so res.locals.csrfToken / siteInfo / messages are ALWAYS set
+// before any error handler tries to render a view.
 app.use(async (req, res, next) => {
-  res.locals.session  = req.session || {};   // ← guard against null session
+  res.locals.session  = req.session || {};
   res.locals.messages = {
     success: req.flash('success'),
     error:   req.flash('error')
   };
+  // Attach CSRF token early so error pages can use it
+  res.locals.csrfToken = (req.csrfToken ? req.csrfToken() : '');
   try {
     res.locals.siteInfo = (await SiteInfo.findOne().lean()) || {};
   } catch {
@@ -125,10 +125,32 @@ app.use(async (req, res, next) => {
   next();
 });
 
+// attachCsrf is now a no-op safety net (csrfToken already set above)
+app.use(attachCsrf);
+
+// ── CSRF error handler ────────────────────────────────
+// FIX 5: Guard res.headersSent before attempting redirect/response.
+app.use((err, req, res, next) => {
+  if (err.code !== 'EBADCSRFTOKEN') return next(err);
+
+  logger.warn(`CSRF token mismatch: IP=${req.ip} URL=${req.originalUrl}`);
+
+  if (res.headersSent) return; // safety guard
+
+  if (req.xhr || req.headers.accept?.includes('application/json')) {
+    return res.status(403).json({ error: 'Invalid CSRF token.' });
+  }
+  req.flash('error', 'Form expired or invalid. Please try again.');
+  // Avoid redirect loops — fall back to '/' if no valid referrer
+  const fallback = '/';
+  const ref = req.get('Referrer') || fallback;
+  return res.redirect(ref === req.originalUrl ? fallback : ref);
+});
+
 // ── General rate limiter ──────────────────────────────
 app.use(generalLimiter);
 
-// ── Health check (for uptime monitors, no rate limit) ─
+// ── Health check ──────────────────────────────────────
 app.get('/health', (req, res) => res.status(200).json({ status: 'ok', ts: Date.now() }));
 
 // ── Routes ────────────────────────────────────────────
@@ -139,21 +161,36 @@ app.use('/admin', require('./routes/admin'));
 
 // ── 404 Handler ───────────────────────────────────────
 app.use((req, res) => {
+  if (res.headersSent) return;
   logger.warn(`404: ${req.method} ${req.originalUrl} IP=${req.ip}`);
   res.status(404).render('404', { title: '404 – Page Not Found' });
 });
 
 // ── Global Error Handler ──────────────────────────────
+// FIX 6: ALWAYS check res.headersSent first — the root cause of the
+// "Cannot set headers after they are sent" secondary error.
 app.use((err, req, res, next) => {
+  // If response already started (e.g. streaming), delegate to Express default
+  if (res.headersSent) {
+    logger.error(`Error after headers sent: ${err.message}`);
+    return next(err);
+  }
+
   logger.error(`500: ${err.message}`, { stack: err.stack, url: req.originalUrl, ip: req.ip });
   const status = err.status || 500;
-  if (req.xhr) return res.status(status).json({ error: isProd ? 'Internal server error.' : err.message });
-  
+
+  if (req.xhr || req.headers.accept?.includes('application/json')) {
+    return res.status(status).json({ error: isProd ? 'Internal server error.' : err.message });
+  }
+
   // Ensure locals are always defined for error pages
+  // (they should already be set by the global locals middleware above,
+  //  but be defensive in case that middleware itself threw)
   res.locals.csrfToken = res.locals.csrfToken || '';
   res.locals.siteInfo  = res.locals.siteInfo  || {};
   res.locals.messages  = res.locals.messages  || { success: [], error: [] };
-  
+  res.locals.session   = res.locals.session   || {};
+
   res.status(status).render('500', { title: 'Server Error' });
 });
 

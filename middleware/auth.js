@@ -23,9 +23,11 @@ const ensureGuest = (req, res, next) => {
   return next();
 };
 
-// Attach csrfToken helper to res.locals so every view can use it
+// Attach csrfToken to res.locals — idempotent so it's safe to call multiple times.
+// app.js global-locals middleware sets it first; this is a safety net for any
+// route that somehow bypasses that middleware.
 const attachCsrf = (req, res, next) => {
-  if (req.csrfToken) {
+  if (!res.locals.csrfToken && req.csrfToken) {
     res.locals.csrfToken = req.csrfToken();
   }
   next();
