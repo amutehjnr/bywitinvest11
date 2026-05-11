@@ -10,6 +10,10 @@ const logger = require('../config/logger');
 
 router.use(ensureAdmin);
 
+// Helper: retrieve the post-multipart csrf middleware stored on the app.
+// Using a lazy getter avoids a circular-require at module load time.
+const getLocalCsrf = (req) => req.app.get('csrfAfterMultipart');
+
 // ── GET /admin ────────────────────────────────────────────────────────────────
 router.get('/', async (req, res) => {
   try {
@@ -62,8 +66,7 @@ router.post('/users/:id/credit',
       return res.redirect('/admin/users');
     }
     try {
-      const { amount } = req.body;
-      const amt = parseFloat(parseFloat(amount).toFixed(2));
+      const amt = parseFloat(parseFloat(req.body.amount).toFixed(2));
       const user = await User.findByIdAndUpdate(req.params.id, { $inc: { balance: amt } }, { new: true });
       if (!user) { req.flash('error', 'User not found.'); return res.redirect('/admin/users'); }
       logger.info(`Admin credited $${amt} to userId=${req.params.id}`);
@@ -146,7 +149,6 @@ router.post('/withdrawals/:id/reject', async (req, res) => {
     w.status = 'rejected';
     w.processedAt = new Date();
     await w.save();
-    // Refund balance
     await User.findByIdAndUpdate(w.user._id, { $inc: { balance: w.amount } });
     logger.info(`Withdrawal rejected + refunded: withdrawalId=${w._id} amount=${w.amount}`);
     req.flash('success', 'Withdrawal rejected and balance refunded.');
@@ -199,7 +201,11 @@ router.get('/blog', async (req, res) => {
   res.render('admin/blog', { title: 'Manage Blog', blogs });
 });
 
-router.post('/blog', upload.single('image'), handleUploadError,
+// Multipart route — multer first, then csrfAfterMultipart, then handler
+router.post('/blog',
+  upload.single('image'),
+  handleUploadError,
+  (req, res, next) => getLocalCsrf(req)(req, res, next),
   [body('headline').trim().notEmpty().isLength({ max: 200 })],
   async (req, res) => {
     const { headline, intro, body: bodyText } = req.body;
@@ -222,13 +228,19 @@ router.get('/team', async (req, res) => {
   res.render('admin/team', { title: 'Manage Team', team });
 });
 
-router.post('/team', upload.single('photo'), handleUploadError, async (req, res) => {
-  const { name, position } = req.body;
-  const photo = req.file ? '/uploads/' + req.file.filename : '';
-  await Team.create({ name, position, photo });
-  req.flash('success', 'Team member added.');
-  res.redirect('/admin/team');
-});
+// Multipart route
+router.post('/team',
+  upload.single('photo'),
+  handleUploadError,
+  (req, res, next) => getLocalCsrf(req)(req, res, next),
+  async (req, res) => {
+    const { name, position } = req.body;
+    const photo = req.file ? '/uploads/' + req.file.filename : '';
+    await Team.create({ name, position, photo });
+    req.flash('success', 'Team member added.');
+    res.redirect('/admin/team');
+  }
+);
 
 router.post('/team/:id/delete', async (req, res) => {
   await Team.findByIdAndDelete(req.params.id);
@@ -241,13 +253,19 @@ router.get('/testimonials', async (req, res) => {
   res.render('admin/testimonials', { title: 'Manage Testimonials', testimonials });
 });
 
-router.post('/testimonials', upload.single('photo'), handleUploadError, async (req, res) => {
-  const { message, name, location } = req.body;
-  const photo = req.file ? '/uploads/' + req.file.filename : '';
-  await Testimonial.create({ message, name, location, photo });
-  req.flash('success', 'Testimonial added.');
-  res.redirect('/admin/testimonials');
-});
+// Multipart route
+router.post('/testimonials',
+  upload.single('photo'),
+  handleUploadError,
+  (req, res, next) => getLocalCsrf(req)(req, res, next),
+  async (req, res) => {
+    const { message, name, location } = req.body;
+    const photo = req.file ? '/uploads/' + req.file.filename : '';
+    await Testimonial.create({ message, name, location, photo });
+    req.flash('success', 'Testimonial added.');
+    res.redirect('/admin/testimonials');
+  }
+);
 
 router.post('/testimonials/:id/delete', async (req, res) => {
   await Testimonial.findByIdAndDelete(req.params.id);
@@ -277,7 +295,6 @@ router.post('/faq/:id/delete', async (req, res) => {
 // ── Contacts ──────────────────────────────────────────────────────────────────
 router.get('/contacts', async (req, res) => {
   const contacts = await Contact.find().sort({ createdAt: -1 }).lean();
-  // Mark all as read
   await Contact.updateMany({ isRead: false }, { isRead: true });
   res.render('admin/contacts', { title: 'Contact Messages', contacts });
 });
@@ -288,29 +305,34 @@ router.get('/settings', async (req, res) => {
   res.render('admin/settings', { title: 'Site Settings', siteInfo });
 });
 
+// Multipart route — THE route that was failing with "Form expired or invalid"
+// Fix: multer → handleUploadError → csrfAfterMultipart → handler
+// By the time csrfAfterMultipart runs, multer has populated req.body
+// so _csrf is readable and token validation succeeds.
 router.post('/settings',
   upload.fields([
-    { name: 'logo', maxCount: 1 },
+    { name: 'logo',    maxCount: 1 },
     { name: 'favicon', maxCount: 1 },
-    { name: 'btcQR', maxCount: 1 },
-    { name: 'ethQR', maxCount: 1 },
-    { name: 'usdtQR', maxCount: 1 }
+    { name: 'btcQR',   maxCount: 1 },
+    { name: 'ethQR',   maxCount: 1 },
+    { name: 'usdtQR',  maxCount: 1 }
   ]),
   handleUploadError,
+  (req, res, next) => getLocalCsrf(req)(req, res, next),
   async (req, res) => {
     try {
       const update = {
-        siteName:          req.body.siteName || 'LucrativeETF',
-        tagline:           req.body.tagline  || '',
-        phone:             req.body.phone    || '',
-        email:             req.body.email    || '',
-        address:           req.body.address  || '',
-        bonusRate:         parseFloat(req.body.bonusRate) || 10,
-        bitcoinAddress:    req.body.bitcoinAddress  || '',
-        ethereumAddress:   req.body.ethereumAddress || '',
-        usdtAddress:       req.body.usdtAddress     || '',
-        privacyPolicy:     req.body.privacyPolicy   || '',
-        termsConditions:   req.body.termsConditions || ''
+        siteName:        req.body.siteName        || 'LucrativeETF',
+        tagline:         req.body.tagline          || '',
+        phone:           req.body.phone            || '',
+        email:           req.body.email            || '',
+        address:         req.body.address          || '',
+        bonusRate:       parseFloat(req.body.bonusRate) || 10,
+        bitcoinAddress:  req.body.bitcoinAddress   || '',
+        ethereumAddress: req.body.ethereumAddress  || '',
+        usdtAddress:     req.body.usdtAddress      || '',
+        privacyPolicy:   req.body.privacyPolicy    || '',
+        termsConditions: req.body.termsConditions  || ''
       };
       if (req.files?.logo)    update.logo    = '/uploads/' + req.files.logo[0].filename;
       if (req.files?.favicon) update.favicon = '/uploads/' + req.files.favicon[0].filename;
@@ -319,7 +341,7 @@ router.post('/settings',
       if (req.files?.usdtQR)  update.usdtQR  = '/uploads/' + req.files.usdtQR[0].filename;
 
       await SiteInfo.findOneAndUpdate({}, update, { upsert: true, new: true });
-      logger.info(`Admin updated site settings`);
+      logger.info('Admin updated site settings');
       req.flash('success', 'Settings saved.');
       res.redirect('/admin/settings');
     } catch (err) {

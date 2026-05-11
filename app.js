@@ -25,23 +25,15 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 const isProd = process.env.NODE_ENV === 'production';
 
-// ── Connect to MongoDB ────────────────────────────────
 connectDB();
 
-// ── View Engine ───────────────────────────────────────
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
-
-// ── Trust proxy ───────────────────────────────────────
 app.set('trust proxy', 1);
 
-// ── Security Middleware ───────────────────────────────
 securityMiddleware(app);
-
-// ── Compression ───────────────────────────────────────
 app.use(compression());
 
-// ── HTTP Request Logging ──────────────────────────────
 if (!isProd) {
   app.use(morgan('dev'));
 } else {
@@ -51,88 +43,98 @@ if (!isProd) {
   }));
 }
 
-// ── Body Parsers ──────────────────────────────────────
 app.use(express.urlencoded({ extended: true, limit: '10kb' }));
 app.use(express.json({ limit: '10kb' }));
 app.use(methodOverride('_method'));
 
-// ── Static Files ──────────────────────────────────────
 app.use(express.static(path.join(__dirname, 'public'), {
   maxAge: isProd ? '7d' : 0,
   etag: true
 }));
 
-// ── Session secret ────────────────────────────────────
-// Must be a non-empty string. Never pass undefined/null to MongoStore.
-const SESSION_SECRET = (process.env.SESSION_SECRET || '').trim() ||
-  (() => {
-    logger.warn('SESSION_SECRET not set – using insecure default. Set it in .env!');
-    return 'insecure_default_please_set_SESSION_SECRET_in_env_now';
-  })();
+// ─────────────────────────────────────────────────────────────────────────────
+// SESSION
+// Guarantee SESSION_SECRET is never null — connect-mongo's kruptein lib
+// crashes with "Cannot read properties of null (reading 'length')" otherwise.
+// ─────────────────────────────────────────────────────────────────────────────
+const SESSION_SECRET = process.env.SESSION_SECRET || (() => {
+  logger.warn('SESSION_SECRET not set – using insecure default. Set it in .env!');
+  return 'change_me_NOW_not_for_production_use_only_32chars_min';
+})();
 
-// ── MongoStore ────────────────────────────────────────
-// ROOT CAUSE OF THE BUG:
-// The original code passed `crypto: { secret: process.env.SESSION_SECRET }`
-// to MongoStore. When SESSION_SECRET was undefined (not set on Render),
-// kruptein (the crypto lib inside connect-mongo v5) received null as its
-// key and crashed: "Cannot read properties of null (reading 'length')".
-//
-// Even after fixing the env var, OLD session documents in MongoDB were
-// written when the secret was null — connect-mongo tries to DECRYPT those
-// on every single request and crashes again on each one.
-//
-// SOLUTION:
-//   1. Remove the crypto option entirely. Session IDs are already
-//      protected by the signed cookie (SESSION_SECRET + httpOnly + secure).
-//      Server-side encryption of the session store is optional hardening,
-//      not a security requirement.
-//   2. Run clear-sessions.js ONCE after deploying to drop all corrupted
-//      session documents from MongoDB.
-const store = MongoStore.create({
-  mongoUrl: process.env.MONGODB_URI,
-  touchAfter: 24 * 3600,
-  ttl: 7 * 24 * 60 * 60,
-  autoRemove: 'native',
-  // ← NO crypto option
-});
-
-// Catch any async store errors so they never become uncaught exceptions
-store.on('error', (err) => {
-  logger.error(`MongoStore error (non-fatal): ${err.message}`);
-});
-
-const sessionConfig = {
+app.use(session({
   name: 'sid',
   secret: SESSION_SECRET,
   resave: false,
   saveUninitialized: false,
-  store,
+  store: MongoStore.create({
+    mongoUrl: process.env.MONGODB_URI,
+    touchAfter: 24 * 3600,
+    ttl: 7 * 24 * 60 * 60,
+    // Only pass crypto when a REAL secret exists in env.
+    // The fallback string must NOT go here — kruptein crashes on it.
+    ...(process.env.SESSION_SECRET
+      ? { crypto: { secret: process.env.SESSION_SECRET } }
+      : {}
+    )
+  }),
   cookie: {
     maxAge: 7 * 24 * 60 * 60 * 1000,
     httpOnly: true,
-    secure: isProd,   // was hardcoded true — broke HTTP in dev/staging
+    secure: isProd,   // was hardcoded true — breaks non-HTTPS environments
     sameSite: 'lax'
   }
-};
+}));
 
-app.use(session(sessionConfig));
-
-// ── Flash Messages ────────────────────────────────────
 app.use(flash());
 
-// ── CSRF Protection ───────────────────────────────────
-const csrfProtection = csrf({ cookie: false });
-app.use(csrfProtection);
+// ─────────────────────────────────────────────────────────────────────────────
+// CSRF — THE ROOT CAUSE OF "Form expired or invalid" ON SETTINGS/UPLOAD PAGES
+//
+// Problem:
+//   csurf({ cookie: false }) reads req.body._csrf to validate the token.
+//   For multipart/form-data requests (file uploads), multer parses the body
+//   INSIDE the route handler — which runs AFTER this global middleware.
+//   So when csurf executes here, req.body is still {} → token not found →
+//   EBADCSRFTOKEN → "Form expired or invalid."
+//
+// Fix:
+//   1. Skip global csurf for multipart POSTs.
+//   2. Create a second csrf instance (csrfAfterMultipart) that route handlers
+//      apply AFTER multer, when req.body is already populated.
+//   3. Store csrfAfterMultipart on the app so route files can retrieve it.
+// ─────────────────────────────────────────────────────────────────────────────
+const csrfValueFn = (req) =>
+  (req.body && req.body._csrf) ||
+  req.headers['x-csrf-token'] ||
+  req.headers['x-xsrf-token'] ||
+  req.headers['csrf-token'] ||
+  (req.query && req.query._csrf);
 
-// ── Global Locals ─────────────────────────────────────
-// MUST come before all error handlers so that csrfToken / siteInfo /
-// messages are always available when any EJS view is rendered.
+const csrfProtection       = csrf({ cookie: false, value: csrfValueFn });
+const csrfAfterMultipart   = csrf({ cookie: false, value: csrfValueFn });
+
+// Make available to route files via app.get('csrfAfterMultipart')
+app.set('csrfAfterMultipart', csrfAfterMultipart);
+
+app.use((req, res, next) => {
+  // Multipart POSTs skip global csurf; they run csrfAfterMultipart locally
+  if (req.method === 'POST' && (req.headers['content-type'] || '').includes('multipart/form-data')) {
+    return next();
+  }
+  return csrfProtection(req, res, next);
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// GLOBAL LOCALS — must be AFTER session+csrf, BEFORE error handlers
+// ─────────────────────────────────────────────────────────────────────────────
 app.use(async (req, res, next) => {
   res.locals.session   = req.session || {};
   res.locals.messages  = {
     success: req.flash('success'),
     error:   req.flash('error')
   };
+  // csrfToken may be absent on multipart routes (token generated locally)
   res.locals.csrfToken = req.csrfToken ? req.csrfToken() : '';
   try {
     res.locals.siteInfo = (await SiteInfo.findOne().lean()) || {};
@@ -142,13 +144,15 @@ app.use(async (req, res, next) => {
   next();
 });
 
-app.use(attachCsrf); // idempotent safety-net (no-op when already set above)
+app.use(attachCsrf); // idempotent safety net
 
-// ── CSRF error handler ────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
+// CSRF ERROR HANDLER
+// ─────────────────────────────────────────────────────────────────────────────
 app.use((err, req, res, next) => {
   if (err.code !== 'EBADCSRFTOKEN') return next(err);
-  if (res.headersSent) return;
   logger.warn(`CSRF token mismatch: IP=${req.ip} URL=${req.originalUrl}`);
+  if (res.headersSent) return;
   if (req.xhr || req.headers.accept?.includes('application/json')) {
     return res.status(403).json({ error: 'Invalid CSRF token.' });
   }
@@ -157,32 +161,33 @@ app.use((err, req, res, next) => {
   return res.redirect(ref === req.originalUrl ? '/' : ref);
 });
 
-// ── General rate limiter ──────────────────────────────
 app.use(generalLimiter);
 
-// ── Health check ──────────────────────────────────────
 app.get('/health', (req, res) => res.status(200).json({ status: 'ok', ts: Date.now() }));
 
-// ── Routes ────────────────────────────────────────────
 app.use('/', require('./routes/public'));
 app.use('/auth', require('./routes/auth'));
 app.use('/dashboard', require('./routes/dashboard'));
 app.use('/admin', require('./routes/admin'));
 
-// ── 404 Handler ───────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
+// 404
+// ─────────────────────────────────────────────────────────────────────────────
 app.use((req, res) => {
   if (res.headersSent) return;
   logger.warn(`404: ${req.method} ${req.originalUrl} IP=${req.ip}`);
   res.status(404).render('404', { title: '404 – Page Not Found' });
 });
 
-// ── Global Error Handler ──────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
+// GLOBAL ERROR HANDLER
+// Always check headersSent first — failing to do so causes the secondary
+// "Cannot set headers after they are sent" error.
+// ─────────────────────────────────────────────────────────────────────────────
 app.use((err, req, res, next) => {
   if (res.headersSent) {
-    // Response already committed — cannot write headers or body.
-    // Just log and bail; do NOT call next(err) again (infinite loop risk).
     logger.error(`Error after headers sent: ${err.message}`);
-    return;
+    return next(err);
   }
   logger.error(`500: ${err.message}`, { stack: err.stack, url: req.originalUrl, ip: req.ip });
   const status = err.status || 500;
@@ -196,7 +201,6 @@ app.use((err, req, res, next) => {
   res.status(status).render('500', { title: 'Server Error' });
 });
 
-// ── Process-level guards ──────────────────────────────
 process.on('SIGTERM', () => {
   logger.info('SIGTERM received – shutting down gracefully.');
   server.close(() => { logger.info('HTTP server closed.'); process.exit(0); });
@@ -209,7 +213,6 @@ process.on('uncaughtException', (err) => {
   process.exit(1);
 });
 
-// ── Start Server ──────────────────────────────────────
 const server = app.listen(PORT, () => {
   logger.info(`🚀 LucrativeETF running on http://localhost:${PORT} [${process.env.NODE_ENV || 'development'}]`);
 });
