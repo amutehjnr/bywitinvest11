@@ -11,3 +11,4 @@ seed.js
 seed-*.js
 *.seed.js
 /seeds/
+*.Readme.md
