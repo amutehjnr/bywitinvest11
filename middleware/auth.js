@@ -23,9 +23,8 @@ const ensureGuest = (req, res, next) => {
   return next();
 };
 
-// Attach csrfToken to res.locals — idempotent so it's safe to call multiple times.
-// app.js global-locals middleware sets it first; this is a safety net for any
-// route that somehow bypasses that middleware.
+// Idempotent: global locals middleware in app.js sets csrfToken first.
+// This is a safety net only — it won't overwrite an already-set value.
 const attachCsrf = (req, res, next) => {
   if (!res.locals.csrfToken && req.csrfToken) {
     res.locals.csrfToken = req.csrfToken();

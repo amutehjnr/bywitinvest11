@@ -32,7 +32,7 @@ connectDB();
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
 
-// ── Trust proxy (for correct IP behind Nginx/Cloudflare) ──
+// ── Trust proxy ───────────────────────────────────────
 app.set('trust proxy', 1);
 
 // ── Security Middleware ───────────────────────────────
@@ -62,36 +62,55 @@ app.use(express.static(path.join(__dirname, 'public'), {
   etag: true
 }));
 
-// ── Session ───────────────────────────────────────────
-// FIX 1: Guarantee SESSION_SECRET is never null/undefined before passing
-// to MongoStore's crypto option — connect-mongo v5 crashes with
-// "Cannot read properties of null (reading 'length')" when it is.
-const SESSION_SECRET = process.env.SESSION_SECRET || (() => {
-  logger.warn('SESSION_SECRET not set – using insecure default. Set it in .env!');
-  return 'change_me_NOW_not_for_production_use_only_32chars_min';
-})();
+// ── Session secret ────────────────────────────────────
+// Must be a non-empty string. Never pass undefined/null to MongoStore.
+const SESSION_SECRET = (process.env.SESSION_SECRET || '').trim() ||
+  (() => {
+    logger.warn('SESSION_SECRET not set – using insecure default. Set it in .env!');
+    return 'insecure_default_please_set_SESSION_SECRET_in_env_now';
+  })();
+
+// ── MongoStore ────────────────────────────────────────
+// ROOT CAUSE OF THE BUG:
+// The original code passed `crypto: { secret: process.env.SESSION_SECRET }`
+// to MongoStore. When SESSION_SECRET was undefined (not set on Render),
+// kruptein (the crypto lib inside connect-mongo v5) received null as its
+// key and crashed: "Cannot read properties of null (reading 'length')".
+//
+// Even after fixing the env var, OLD session documents in MongoDB were
+// written when the secret was null — connect-mongo tries to DECRYPT those
+// on every single request and crashes again on each one.
+//
+// SOLUTION:
+//   1. Remove the crypto option entirely. Session IDs are already
+//      protected by the signed cookie (SESSION_SECRET + httpOnly + secure).
+//      Server-side encryption of the session store is optional hardening,
+//      not a security requirement.
+//   2. Run clear-sessions.js ONCE after deploying to drop all corrupted
+//      session documents from MongoDB.
+const store = MongoStore.create({
+  mongoUrl: process.env.MONGODB_URI,
+  touchAfter: 24 * 3600,
+  ttl: 7 * 24 * 60 * 60,
+  autoRemove: 'native',
+  // ← NO crypto option
+});
+
+// Catch any async store errors so they never become uncaught exceptions
+store.on('error', (err) => {
+  logger.error(`MongoStore error (non-fatal): ${err.message}`);
+});
 
 const sessionConfig = {
   name: 'sid',
   secret: SESSION_SECRET,
   resave: false,
   saveUninitialized: false,
-  store: MongoStore.create({
-    mongoUrl: process.env.MONGODB_URI,
-    touchAfter: 24 * 3600,
-    ttl: 7 * 24 * 60 * 60,
-    // FIX 2: Only enable crypto when we have a real secret; a weak/default
-    // secret passed to kruptein (MongoStore's crypto lib) causes the
-    // null-length crash seen in the logs.
-    ...(process.env.SESSION_SECRET
-      ? { crypto: { secret: process.env.SESSION_SECRET } }
-      : {}
-    )
-  }),
+  store,
   cookie: {
     maxAge: 7 * 24 * 60 * 60 * 1000,
     httpOnly: true,
-    secure: isProd,   // FIX 3: was hardcoded `true`; breaks HTTP in dev/staging
+    secure: isProd,   // was hardcoded true — broke HTTP in dev/staging
     sameSite: 'lax'
   }
 };
@@ -102,21 +121,19 @@ app.use(session(sessionConfig));
 app.use(flash());
 
 // ── CSRF Protection ───────────────────────────────────
-const csrfProtection = csrf({ cookie: false }); // store token in session
+const csrfProtection = csrf({ cookie: false });
 app.use(csrfProtection);
 
 // ── Global Locals ─────────────────────────────────────
-// FIX 4: Move global locals BEFORE attachCsrf and BEFORE the CSRF error
-// handler so res.locals.csrfToken / siteInfo / messages are ALWAYS set
-// before any error handler tries to render a view.
+// MUST come before all error handlers so that csrfToken / siteInfo /
+// messages are always available when any EJS view is rendered.
 app.use(async (req, res, next) => {
-  res.locals.session  = req.session || {};
-  res.locals.messages = {
+  res.locals.session   = req.session || {};
+  res.locals.messages  = {
     success: req.flash('success'),
     error:   req.flash('error')
   };
-  // Attach CSRF token early so error pages can use it
-  res.locals.csrfToken = (req.csrfToken ? req.csrfToken() : '');
+  res.locals.csrfToken = req.csrfToken ? req.csrfToken() : '';
   try {
     res.locals.siteInfo = (await SiteInfo.findOne().lean()) || {};
   } catch {
@@ -125,26 +142,19 @@ app.use(async (req, res, next) => {
   next();
 });
 
-// attachCsrf is now a no-op safety net (csrfToken already set above)
-app.use(attachCsrf);
+app.use(attachCsrf); // idempotent safety-net (no-op when already set above)
 
 // ── CSRF error handler ────────────────────────────────
-// FIX 5: Guard res.headersSent before attempting redirect/response.
 app.use((err, req, res, next) => {
   if (err.code !== 'EBADCSRFTOKEN') return next(err);
-
+  if (res.headersSent) return;
   logger.warn(`CSRF token mismatch: IP=${req.ip} URL=${req.originalUrl}`);
-
-  if (res.headersSent) return; // safety guard
-
   if (req.xhr || req.headers.accept?.includes('application/json')) {
     return res.status(403).json({ error: 'Invalid CSRF token.' });
   }
   req.flash('error', 'Form expired or invalid. Please try again.');
-  // Avoid redirect loops — fall back to '/' if no valid referrer
-  const fallback = '/';
-  const ref = req.get('Referrer') || fallback;
-  return res.redirect(ref === req.originalUrl ? fallback : ref);
+  const ref = req.get('Referrer') || '/';
+  return res.redirect(ref === req.originalUrl ? '/' : ref);
 });
 
 // ── General rate limiter ──────────────────────────────
@@ -167,46 +177,33 @@ app.use((req, res) => {
 });
 
 // ── Global Error Handler ──────────────────────────────
-// FIX 6: ALWAYS check res.headersSent first — the root cause of the
-// "Cannot set headers after they are sent" secondary error.
 app.use((err, req, res, next) => {
-  // If response already started (e.g. streaming), delegate to Express default
   if (res.headersSent) {
+    // Response already committed — cannot write headers or body.
+    // Just log and bail; do NOT call next(err) again (infinite loop risk).
     logger.error(`Error after headers sent: ${err.message}`);
-    return next(err);
+    return;
   }
-
   logger.error(`500: ${err.message}`, { stack: err.stack, url: req.originalUrl, ip: req.ip });
   const status = err.status || 500;
-
   if (req.xhr || req.headers.accept?.includes('application/json')) {
     return res.status(status).json({ error: isProd ? 'Internal server error.' : err.message });
   }
-
-  // Ensure locals are always defined for error pages
-  // (they should already be set by the global locals middleware above,
-  //  but be defensive in case that middleware itself threw)
   res.locals.csrfToken = res.locals.csrfToken || '';
   res.locals.siteInfo  = res.locals.siteInfo  || {};
   res.locals.messages  = res.locals.messages  || { success: [], error: [] };
   res.locals.session   = res.locals.session   || {};
-
   res.status(status).render('500', { title: 'Server Error' });
 });
 
-// ── Graceful shutdown ─────────────────────────────────
+// ── Process-level guards ──────────────────────────────
 process.on('SIGTERM', () => {
   logger.info('SIGTERM received – shutting down gracefully.');
-  server.close(() => {
-    logger.info('HTTP server closed.');
-    process.exit(0);
-  });
+  server.close(() => { logger.info('HTTP server closed.'); process.exit(0); });
 });
-
 process.on('unhandledRejection', (reason) => {
   logger.error(`Unhandled Promise Rejection: ${reason}`);
 });
-
 process.on('uncaughtException', (err) => {
   logger.error(`Uncaught Exception: ${err.message}`, { stack: err.stack });
   process.exit(1);
