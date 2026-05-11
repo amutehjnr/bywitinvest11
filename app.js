@@ -148,6 +148,12 @@ app.use((err, req, res, next) => {
   logger.error(`500: ${err.message}`, { stack: err.stack, url: req.originalUrl, ip: req.ip });
   const status = err.status || 500;
   if (req.xhr) return res.status(status).json({ error: isProd ? 'Internal server error.' : err.message });
+  
+  // Ensure locals are always defined for error pages
+  res.locals.csrfToken = res.locals.csrfToken || '';
+  res.locals.siteInfo  = res.locals.siteInfo  || {};
+  res.locals.messages  = res.locals.messages  || { success: [], error: [] };
+  
   res.status(status).render('500', { title: 'Server Error' });
 });
 

@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="csrf-token" content="<%= csrfToken %>">
+  <meta name="csrf-token" content="<%= typeof csrfToken !== 'undefined' ? csrfToken : '' %>">
   <meta name="robots" content="<%= (typeof session !== 'undefined' && session.userId) ? 'noindex,nofollow' : 'index,follow' %>">
   <title><%= title %> | <%= (typeof siteInfo !== 'undefined' && siteInfo.siteName) ? siteInfo.siteName : 'BywitInvest' %></title>
   <link rel="shortcut icon" href="<%= (typeof siteInfo !== 'undefined' && siteInfo.favicon) ? siteInfo.favicon : '/images/favicon.png' %>" type="image/x-icon">
