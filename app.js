@@ -112,17 +112,16 @@ app.use((err, req, res, next) => {
 
 // ── Global Locals ─────────────────────────────────────
 app.use(async (req, res, next) => {
-  res.locals.session = req.session;
+  res.locals.session  = req.session || {};   // ← guard against null session
   res.locals.messages = {
     success: req.flash('success'),
-    error: req.flash('error')
+    error:   req.flash('error')
   };
-  // Cache siteInfo so partials always have it
   try {
-    if (!res.locals.siteInfo) {
-      res.locals.siteInfo = (await SiteInfo.findOne().lean()) || {};
-    }
-  } catch { res.locals.siteInfo = {}; }
+    res.locals.siteInfo = (await SiteInfo.findOne().lean()) || {};
+  } catch {
+    res.locals.siteInfo = {};
+  }
   next();
 });
 
