@@ -172,7 +172,7 @@ router.get('/logout', (req, res) => {
   const userId = req.session?.userId;
   req.session.destroy((err) => {
     if (err) logger.error(`Session destroy error: ${err.message}`);
-    res.clearCookie('__Host-sid');
+    res.clearCookie('sid');
     logger.info(`User logged out: ${userId} IP=${req.ip}`);
     res.redirect('/');
   });

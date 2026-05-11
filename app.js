@@ -64,7 +64,7 @@ app.use(express.static(path.join(__dirname, 'public'), {
 
 // ── Session ───────────────────────────────────────────
 const sessionConfig = {
-  name: '__Host-sid',
+  name: 'sid',
   secret: process.env.SESSION_SECRET || (() => {
     logger.warn('SESSION_SECRET not set – using insecure default. Set it in .env!');
     return 'change_me_NOW_not_for_production_use_only';
@@ -86,7 +86,7 @@ const sessionConfig = {
 };
 
 // In production with __Host- prefix the cookie name requires secure=true
-if (isProd) sessionConfig.cookie.secure = true;
+// if (isProd) sessionConfig.cookie.secure = true;
 
 app.use(session(sessionConfig));
 
