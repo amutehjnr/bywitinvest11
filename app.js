@@ -33,7 +33,7 @@ app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
 
 // ── Trust proxy (for correct IP behind Nginx/Cloudflare) ──
-if (isProd) app.set('trust proxy', 1);
+app.set('trust proxy', 1);
 
 // ── Security Middleware ───────────────────────────────
 securityMiddleware(app);
@@ -64,7 +64,7 @@ app.use(express.static(path.join(__dirname, 'public'), {
 
 // ── Session ───────────────────────────────────────────
 const sessionConfig = {
-  name: '__Host-sid', // Prevents session fixation; __Host- prefix enforces Secure+path=/
+  name: '__Host-sid',
   secret: process.env.SESSION_SECRET || (() => {
     logger.warn('SESSION_SECRET not set – using insecure default. Set it in .env!');
     return 'change_me_NOW_not_for_production_use_only';
@@ -73,14 +73,14 @@ const sessionConfig = {
   saveUninitialized: false,
   store: MongoStore.create({
     mongoUrl: process.env.MONGODB_URI,
-    touchAfter: 24 * 3600, // lazy session update
-    ttl: 7 * 24 * 60 * 60, // 7 days
+    touchAfter: 24 * 3600,
+    ttl: 7 * 24 * 60 * 60,
     crypto: { secret: process.env.SESSION_SECRET || 'change_me' }
   }),
   cookie: {
     maxAge: 7 * 24 * 60 * 60 * 1000,
     httpOnly: true,
-    secure: isProd,      // HTTPS only in prod
+    secure: true,      // force true on Render (always HTTPS)
     sameSite: 'lax'
   }
 };
@@ -99,12 +99,13 @@ app.use(csrfProtection);
 app.use(attachCsrf);
 
 // ── CSRF error handler ────────────────────────────────
+// NEW
 app.use((err, req, res, next) => {
   if (err.code === 'EBADCSRFTOKEN') {
     logger.warn(`CSRF token mismatch: IP=${req.ip} URL=${req.originalUrl}`);
     if (req.xhr) return res.status(403).json({ error: 'Invalid CSRF token.' });
     req.flash('error', 'Form expired or invalid. Please try again.');
-    return res.redirect('back');
+    return res.redirect(req.get('Referrer') || '/admin/settings');
   }
   next(err);
 });
