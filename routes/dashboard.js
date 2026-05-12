@@ -1,18 +1,24 @@
 const express = require('express');
 const router = express.Router();
 const { body, validationResult } = require('express-validator');
+const csrf = require('csurf');
 const User = require('../models/User');
 const { Plan, Investment, Deposit, Withdrawal, SiteInfo, Wallet } = require('../models/index');
 const { ensureAuth } = require('../middleware/auth');
 const { financialLimiter } = require('../config/rateLimit');
 const upload = require('../config/upload');
 const { handleUploadError } = require('../middleware/uploadError');
+const { uploadThenCsrf } = require('../middleware/csrfMultipart');
 const logger = require('../config/logger');
+
+// Re-use the same csurf instance as app.js (cookie:false = session-backed).
+// We need a local reference so uploadThenCsrf can pass it as the 3rd step.
+const csrfProtection = csrf({ cookie: false });
 
 router.use(ensureAuth);
 
-// ── Helper: load current user (lean for reads, full for writes) ───────────────
-const getUser    = (id) => User.findById(id);
+// ── Helper: load current user ─────────────────────────────────────────────────
+const getUser     = (id) => User.findById(id);
 const getUserLean = (id) => User.findById(id).lean();
 
 // ── GET /dashboard ────────────────────────────────────────────────────────────
@@ -52,6 +58,7 @@ router.get('/invest', async (req, res) => {
 });
 
 // ── POST /dashboard/invest ────────────────────────────────────────────────────
+// No file upload — standard urlencoded body, csurf works as normal.
 router.post('/invest', financialLimiter,
   [
     body('planId').isMongoId().withMessage('Invalid plan'),
@@ -131,8 +138,11 @@ router.get('/deposit', async (req, res) => {
 });
 
 // ── POST /dashboard/deposit ───────────────────────────────────────────────────
+// FIX: multer must run BEFORE csurf on multipart routes.
+//      uploadThenCsrf([multer], [csrfProtection]) ensures correct order:
+//      multer → token injector → csurf validation.
 router.post('/deposit', financialLimiter,
-  upload.single('proof'),
+  ...uploadThenCsrf(upload.single('proof'), csrfProtection),
   handleUploadError,
   [
     body('channel').isIn(['BTC', 'ETH', 'USDT', 'Bank']).withMessage('Invalid channel'),

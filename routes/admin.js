@@ -1,12 +1,17 @@
 const express = require('express');
 const router = express.Router();
+const csrf = require('csurf');
 const { body, validationResult } = require('express-validator');
 const User = require('../models/User');
 const { Plan, Investment, Deposit, Withdrawal, Blog, Team, Testimonial, FAQ, Contact, SiteInfo } = require('../models/index');
 const { ensureAdmin } = require('../middleware/auth');
 const upload = require('../config/upload');
 const { handleUploadError } = require('../middleware/uploadError');
+const { uploadThenCsrf } = require('../middleware/csrfMultipart');
 const logger = require('../config/logger');
+
+// Re-use the same csurf config as app.js (session-backed, cookie:false).
+const csrfProtection = csrf({ cookie: false });
 
 router.use(ensureAdmin);
 
@@ -146,7 +151,6 @@ router.post('/withdrawals/:id/reject', async (req, res) => {
     w.status = 'rejected';
     w.processedAt = new Date();
     await w.save();
-    // Refund balance
     await User.findByIdAndUpdate(w.user._id, { $inc: { balance: w.amount } });
     logger.info(`Withdrawal rejected + refunded: withdrawalId=${w._id} amount=${w.amount}`);
     req.flash('success', 'Withdrawal rejected and balance refunded.');
@@ -199,7 +203,10 @@ router.get('/blog', async (req, res) => {
   res.render('admin/blog', { title: 'Manage Blog', blogs });
 });
 
-router.post('/blog', upload.single('image'), handleUploadError,
+// FIX: multer runs before csurf via uploadThenCsrf
+router.post('/blog',
+  ...uploadThenCsrf(upload.single('image'), csrfProtection),
+  handleUploadError,
   [body('headline').trim().notEmpty().isLength({ max: 200 })],
   async (req, res) => {
     const { headline, intro, body: bodyText } = req.body;
@@ -222,13 +229,18 @@ router.get('/team', async (req, res) => {
   res.render('admin/team', { title: 'Manage Team', team });
 });
 
-router.post('/team', upload.single('photo'), handleUploadError, async (req, res) => {
-  const { name, position } = req.body;
-  const photo = req.file ? '/uploads/' + req.file.filename : '';
-  await Team.create({ name, position, photo });
-  req.flash('success', 'Team member added.');
-  res.redirect('/admin/team');
-});
+// FIX: multer runs before csurf via uploadThenCsrf
+router.post('/team',
+  ...uploadThenCsrf(upload.single('photo'), csrfProtection),
+  handleUploadError,
+  async (req, res) => {
+    const { name, position } = req.body;
+    const photo = req.file ? '/uploads/' + req.file.filename : '';
+    await Team.create({ name, position, photo });
+    req.flash('success', 'Team member added.');
+    res.redirect('/admin/team');
+  }
+);
 
 router.post('/team/:id/delete', async (req, res) => {
   await Team.findByIdAndDelete(req.params.id);
@@ -241,13 +253,18 @@ router.get('/testimonials', async (req, res) => {
   res.render('admin/testimonials', { title: 'Manage Testimonials', testimonials });
 });
 
-router.post('/testimonials', upload.single('photo'), handleUploadError, async (req, res) => {
-  const { message, name, location } = req.body;
-  const photo = req.file ? '/uploads/' + req.file.filename : '';
-  await Testimonial.create({ message, name, location, photo });
-  req.flash('success', 'Testimonial added.');
-  res.redirect('/admin/testimonials');
-});
+// FIX: multer runs before csurf via uploadThenCsrf
+router.post('/testimonials',
+  ...uploadThenCsrf(upload.single('photo'), csrfProtection),
+  handleUploadError,
+  async (req, res) => {
+    const { message, name, location } = req.body;
+    const photo = req.file ? '/uploads/' + req.file.filename : '';
+    await Testimonial.create({ message, name, location, photo });
+    req.flash('success', 'Testimonial added.');
+    res.redirect('/admin/testimonials');
+  }
+);
 
 router.post('/testimonials/:id/delete', async (req, res) => {
   await Testimonial.findByIdAndDelete(req.params.id);
@@ -277,7 +294,6 @@ router.post('/faq/:id/delete', async (req, res) => {
 // ── Contacts ──────────────────────────────────────────────────────────────────
 router.get('/contacts', async (req, res) => {
   const contacts = await Contact.find().sort({ createdAt: -1 }).lean();
-  // Mark all as read
   await Contact.updateMany({ isRead: false }, { isRead: true });
   res.render('admin/contacts', { title: 'Contact Messages', contacts });
 });
@@ -288,29 +304,34 @@ router.get('/settings', async (req, res) => {
   res.render('admin/settings', { title: 'Site Settings', siteInfo });
 });
 
+// FIX: upload.fields() (multipart) must run before csurf.
+//      uploadThenCsrf handles the ordering correctly.
 router.post('/settings',
-  upload.fields([
-    { name: 'logo', maxCount: 1 },
-    { name: 'favicon', maxCount: 1 },
-    { name: 'btcQR', maxCount: 1 },
-    { name: 'ethQR', maxCount: 1 },
-    { name: 'usdtQR', maxCount: 1 }
-  ]),
+  ...uploadThenCsrf(
+    upload.fields([
+      { name: 'logo',    maxCount: 1 },
+      { name: 'favicon', maxCount: 1 },
+      { name: 'btcQR',   maxCount: 1 },
+      { name: 'ethQR',   maxCount: 1 },
+      { name: 'usdtQR',  maxCount: 1 }
+    ]),
+    csrfProtection
+  ),
   handleUploadError,
   async (req, res) => {
     try {
       const update = {
-        siteName:          req.body.siteName || 'LucrativeETF',
-        tagline:           req.body.tagline  || '',
-        phone:             req.body.phone    || '',
-        email:             req.body.email    || '',
-        address:           req.body.address  || '',
-        bonusRate:         parseFloat(req.body.bonusRate) || 10,
-        bitcoinAddress:    req.body.bitcoinAddress  || '',
-        ethereumAddress:   req.body.ethereumAddress || '',
-        usdtAddress:       req.body.usdtAddress     || '',
-        privacyPolicy:     req.body.privacyPolicy   || '',
-        termsConditions:   req.body.termsConditions || ''
+        siteName:        req.body.siteName        || 'LucrativeETF',
+        tagline:         req.body.tagline         || '',
+        phone:           req.body.phone           || '',
+        email:           req.body.email           || '',
+        address:         req.body.address         || '',
+        bonusRate:       parseFloat(req.body.bonusRate) || 10,
+        bitcoinAddress:  req.body.bitcoinAddress  || '',
+        ethereumAddress: req.body.ethereumAddress || '',
+        usdtAddress:     req.body.usdtAddress     || '',
+        privacyPolicy:   req.body.privacyPolicy   || '',
+        termsConditions: req.body.termsConditions || ''
       };
       if (req.files?.logo)    update.logo    = '/uploads/' + req.files.logo[0].filename;
       if (req.files?.favicon) update.favicon = '/uploads/' + req.files.favicon[0].filename;
@@ -319,7 +340,7 @@ router.post('/settings',
       if (req.files?.usdtQR)  update.usdtQR  = '/uploads/' + req.files.usdtQR[0].filename;
 
       await SiteInfo.findOneAndUpdate({}, update, { upsert: true, new: true });
-      logger.info(`Admin updated site settings`);
+      logger.info('Admin updated site settings');
       req.flash('success', 'Settings saved.');
       res.redirect('/admin/settings');
     } catch (err) {
