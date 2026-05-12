@@ -5,10 +5,6 @@ logs/
 .DS_Store
 npm-debug.log*
 
-*.log
-.DS_Store
-npm-debug.log*
-
 # Seed & utility scripts
 seed.js
 seed-*.js
@@ -16,4 +12,6 @@ seed-*.js
 /seeds/
 fix-*.js
 get-*.js
+update-*.js
+clear-*.js
 *.Readme.md
