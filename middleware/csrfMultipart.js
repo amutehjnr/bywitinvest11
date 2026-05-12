@@ -1,80 +1,73 @@
-/**
- * csrfMultipart.js
- *
- * ROOT CAUSE OF THE CSRF MISMATCH ON FILE-UPLOAD ROUTES:
- * -------------------------------------------------------
- * csurf (cookie:false / session mode) reads the CSRF token from:
- *   1. req.body._csrf          — only available AFTER a body-parser runs
- *   2. req.query._csrf
- *   3. req.headers['csrf-token'] / x-csrf-token / x-xsrf-token
- *
- * For multipart/form-data requests, express.urlencoded() does NOT parse
- * the body — only multer does. But multer is mounted PER-ROUTE, *after*
- * the global csrfProtection middleware has already tried (and failed) to
- * read req.body._csrf (which is still undefined at that point).
- *
- * SOLUTION:
- * ---------
- * 1. Mount multer BEFORE csurf on every multipart route.
- * 2. After multer populates req.body, manually inject the token into the
- *    header that csurf always checks (x-csrf-token), so that when csurf
- *    runs immediately after it finds the token.
- *
- * Usage (replace existing route middleware order):
- *
- *   const { uploadThenCsrf } = require('../middleware/csrfMultipart');
- *
- *   // Single file
- *   router.post('/deposit', financialLimiter,
- *     uploadThenCsrf(upload.single('proof'), csrfProtection),
- *     handleUploadError,
- *     [...validators],
- *     handler
- *   );
- *
- *   // Multiple fields
- *   router.post('/settings',
- *     uploadThenCsrf(upload.fields([...]), csrfProtection),
- *     handleUploadError,
- *     handler
- *   );
- */
-
 'use strict';
 
 /**
- * Returns an array of middleware:
- *   [ multerMiddleware, csrfTokenInjector, csrfProtection ]
+ * middleware/csrfMultipart.js
  *
- * The injector reads _csrf from the now-populated req.body and writes it
- * into req.headers['x-csrf-token'] so csurf finds it without any patches.
+ * WHY THIS EXISTS
+ * ───────────────
+ * csurf (session mode, cookie:false) reads the CSRF token from req.body._csrf.
+ * For multipart/form-data, express.urlencoded() never runs — only multer can
+ * parse the body. The global csrfProtection in app.js is intentionally SKIPPED
+ * for multipart routes (see MULTIPART_ROUTES in app.js).
  *
- * @param {Function} multerMiddleware  - e.g. upload.single('proof')
- * @param {Function} csrfProtection    - the csurf() instance from app.js
- * @returns {Function[]}
+ * This middleware restores protection on those routes by:
+ *   1. Running multer so req.body is populated.
+ *   2. Copying req.body._csrf into req.headers['x-csrf-token'] — a header
+ *      that csurf always checks regardless of content-type.
+ *   3. Running the SAME shared csrfProtection instance from app.locals.
+ *
+ * USAGE — spread into route middleware array:
+ *
+ *   const { uploadThenCsrf } = require('../middleware/csrfMultipart');
+ *
+ *   router.post('/deposit', financialLimiter,
+ *     ...uploadThenCsrf(upload.single('proof')),
+ *     handleUploadError,
+ *     validators,
+ *     handler
+ *   );
  */
-function uploadThenCsrf(multerMiddleware, csrfProtection) {
+
+const logger = require('../config/logger');
+
+/**
+ * @param {Function} multerMiddleware  e.g. upload.single('proof')
+ * @returns {Function[]}  [multer, tokenInjector, csrfValidator]
+ */
+function uploadThenCsrf(multerMiddleware) {
   return [
-    // Step 1: parse the multipart body so req.body._csrf is populated
+    // Step 1: parse multipart body → populates req.body and req.files
     multerMiddleware,
 
-    // Step 2: bridge the token into a header csurf always checks
+    // Step 2: move _csrf from body into the header csurf always trusts
     function injectCsrfFromBody(req, res, next) {
       const token =
         (req.body && req.body._csrf) ||
-        req.headers['x-csrf-token'] ||
-        req.headers['csrf-token'] ||
+        req.headers['x-csrf-token']  ||
+        req.headers['csrf-token']    ||
         req.headers['x-xsrf-token'];
 
       if (token) {
-        // csurf checks this header regardless of content-type
         req.headers['x-csrf-token'] = token;
       }
       next();
     },
 
-    // Step 3: now csurf can validate normally
-    csrfProtection,
+    // Step 3: validate using the SHARED instance stored on app.locals
+    // (set in app.js as: app.locals.csrfProtection = csrfProtection)
+    function runCsrf(req, res, next) {
+      const csrfProtection = req.app.locals.csrfProtection;
+      if (!csrfProtection) {
+        logger.warn('csrfProtection not on app.locals — check app.js setup');
+        return next();
+      }
+      csrfProtection(req, res, (err) => {
+        if (err) return next(err);
+        // Refresh csrfToken local so any re-render in this handler works
+        try { res.locals.csrfToken = req.csrfToken(); } catch { res.locals.csrfToken = ''; }
+        next();
+      });
+    },
   ];
 }
 

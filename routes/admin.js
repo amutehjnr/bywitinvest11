@@ -1,6 +1,5 @@
 const express = require('express');
 const router = express.Router();
-const csrf = require('csurf');
 const { body, validationResult } = require('express-validator');
 const User = require('../models/User');
 const { Plan, Investment, Deposit, Withdrawal, Blog, Team, Testimonial, FAQ, Contact, SiteInfo } = require('../models/index');
@@ -9,9 +8,6 @@ const upload = require('../config/upload');
 const { handleUploadError } = require('../middleware/uploadError');
 const { uploadThenCsrf } = require('../middleware/csrfMultipart');
 const logger = require('../config/logger');
-
-// Re-use the same csurf config as app.js (session-backed, cookie:false).
-const csrfProtection = csrf({ cookie: false });
 
 router.use(ensureAdmin);
 
@@ -205,7 +201,7 @@ router.get('/blog', async (req, res) => {
 
 // FIX: multer runs before csurf via uploadThenCsrf
 router.post('/blog',
-  ...uploadThenCsrf(upload.single('image'), csrfProtection),
+  ...uploadThenCsrf(upload.single('image')),
   handleUploadError,
   [body('headline').trim().notEmpty().isLength({ max: 200 })],
   async (req, res) => {
@@ -231,7 +227,7 @@ router.get('/team', async (req, res) => {
 
 // FIX: multer runs before csurf via uploadThenCsrf
 router.post('/team',
-  ...uploadThenCsrf(upload.single('photo'), csrfProtection),
+  ...uploadThenCsrf(upload.single('photo')),
   handleUploadError,
   async (req, res) => {
     const { name, position } = req.body;
@@ -255,7 +251,7 @@ router.get('/testimonials', async (req, res) => {
 
 // FIX: multer runs before csurf via uploadThenCsrf
 router.post('/testimonials',
-  ...uploadThenCsrf(upload.single('photo'), csrfProtection),
+  ...uploadThenCsrf(upload.single('photo')),
   handleUploadError,
   async (req, res) => {
     const { message, name, location } = req.body;
@@ -314,8 +310,7 @@ router.post('/settings',
       { name: 'btcQR',   maxCount: 1 },
       { name: 'ethQR',   maxCount: 1 },
       { name: 'usdtQR',  maxCount: 1 }
-    ]),
-    csrfProtection
+    ])
   ),
   handleUploadError,
   async (req, res) => {

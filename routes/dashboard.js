@@ -1,7 +1,6 @@
 const express = require('express');
 const router = express.Router();
 const { body, validationResult } = require('express-validator');
-const csrf = require('csurf');
 const User = require('../models/User');
 const { Plan, Investment, Deposit, Withdrawal, SiteInfo, Wallet } = require('../models/index');
 const { ensureAuth } = require('../middleware/auth');
@@ -10,10 +9,6 @@ const upload = require('../config/upload');
 const { handleUploadError } = require('../middleware/uploadError');
 const { uploadThenCsrf } = require('../middleware/csrfMultipart');
 const logger = require('../config/logger');
-
-// Re-use the same csurf instance as app.js (cookie:false = session-backed).
-// We need a local reference so uploadThenCsrf can pass it as the 3rd step.
-const csrfProtection = csrf({ cookie: false });
 
 router.use(ensureAuth);
 
@@ -139,10 +134,9 @@ router.get('/deposit', async (req, res) => {
 
 // ── POST /dashboard/deposit ───────────────────────────────────────────────────
 // FIX: multer must run BEFORE csurf on multipart routes.
-//      uploadThenCsrf([multer], [csrfProtection]) ensures correct order:
-//      multer → token injector → csurf validation.
+//      uploadThenCsrf(multer) handles: multer → token injector → csurf.
 router.post('/deposit', financialLimiter,
-  ...uploadThenCsrf(upload.single('proof'), csrfProtection),
+  ...uploadThenCsrf(upload.single('proof')),
   handleUploadError,
   [
     body('channel').isIn(['BTC', 'ETH', 'USDT', 'Bank']).withMessage('Invalid channel'),
