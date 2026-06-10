@@ -1,0 +1,414 @@
+<%- include('../partials/head') %>
+<div class="dashboard-layout">
+  <%- include('../partials/admin-sidebar', { active: 'credit' }) %>
+  <div class="dashboard-main">
+    <div class="dashboard-topbar"><h4 class="mb-0">Manual Credit / Debit</h4></div>
+    <div class="dashboard-content">
+      <%- include('../partials/flash') %>
+
+      <!-- ── Summary Cards ── -->
+      <div class="row mb-4">
+        <div class="col-6 col-lg-3 mb-3">
+          <div class="stat-card">
+            <div class="stat-icon bg-green"><i class="fas fa-users"></i></div>
+            <div><p>Total Users</p><h5><%= users.length %></h5></div>
+          </div>
+        </div>
+        <div class="col-6 col-lg-3 mb-3">
+          <div class="stat-card">
+            <div class="stat-icon bg-blue"><i class="fas fa-plus-circle"></i></div>
+            <div><p>Credits Today</p><h5><%= creditsToday %></h5></div>
+          </div>
+        </div>
+        <div class="col-6 col-lg-3 mb-3">
+          <div class="stat-card">
+            <div class="stat-icon bg-orange"><i class="fas fa-coins"></i></div>
+            <div><p>Total Credited Today</p><h5>$<%= totalCreditedToday.toFixed(2) %></h5></div>
+          </div>
+        </div>
+        <div class="col-6 col-lg-3 mb-3">
+          <div class="stat-card">
+            <div class="stat-icon bg-purple"><i class="fas fa-history"></i></div>
+            <div><p>Audit Log Entries</p><h5><%= creditLog.length %></h5></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="row">
+        <!-- ── Left: Quick Credit Form ── -->
+        <div class="col-lg-4 mb-4">
+          <div class="dash-card">
+            <div class="dash-card-header">
+              <h6><i class="fas fa-bolt me-2 text-warning"></i>Quick Credit / Debit</h6>
+            </div>
+
+            <form action="/admin/credit" method="POST" id="creditForm">
+              <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+              <input type="hidden" name="userId" id="formUserId">
+
+              <!-- Selected user display -->
+              <div class="mb-3">
+                <label class="form-label fw-semibold">Selected User</label>
+                <div id="selectedUserDisplay" class="selected-user-box text-muted">
+                  <i class="fas fa-user-circle me-2 opacity-50"></i>
+                  <span id="selectedUserName">No user selected — search below</span>
+                </div>
+              </div>
+
+              <!-- Operation type -->
+              <div class="mb-3">
+                <label class="form-label fw-semibold">Operation</label>
+                <div class="d-flex gap-2">
+                  <label class="op-radio flex-fill">
+                    <input type="radio" name="operation" value="credit" checked>
+                    <span class="op-radio-label op-credit">
+                      <i class="fas fa-plus-circle me-1"></i>Credit
+                    </span>
+                  </label>
+                  <label class="op-radio flex-fill">
+                    <input type="radio" name="operation" value="debit">
+                    <span class="op-radio-label op-debit">
+                      <i class="fas fa-minus-circle me-1"></i>Debit
+                    </span>
+                  </label>
+                </div>
+              </div>
+
+              <!-- Field -->
+              <div class="mb-3">
+                <label class="form-label fw-semibold">Balance Field</label>
+                <select name="field" class="form-select">
+                  <option value="balance">Main Balance ($)</option>
+                  <option value="bonus">Bonus Balance ($)</option>
+                  <option value="totalInvested">Total Invested ($)</option>
+                </select>
+              </div>
+
+              <!-- Amount -->
+              <div class="mb-3">
+                <label class="form-label fw-semibold">Amount (USD)</label>
+                <div class="input-group">
+                  <span class="input-group-text">$</span>
+                  <input type="number" name="amount" class="form-control"
+                         placeholder="0.00" step="0.01" min="0.01" max="10000000" required>
+                </div>
+              </div>
+
+              <!-- Note -->
+              <div class="mb-4">
+                <label class="form-label fw-semibold">
+                  Admin Note <span class="text-muted fw-normal small">(internal)</span>
+                </label>
+                <textarea name="note" class="form-control" rows="2"
+                          maxlength="300" placeholder="e.g. Manual bonus for referral"></textarea>
+              </div>
+
+              <button type="submit" class="btn btn-theme w-100" id="submitBtn" disabled>
+                <i class="fas fa-paper-plane me-2"></i>Apply Transaction
+              </button>
+            </form>
+          </div>
+
+          <!-- Recent log for quick reference -->
+          <div class="dash-card mt-4">
+            <div class="dash-card-header">
+              <h6><i class="fas fa-clock-rotate-left me-2 text-green"></i>Last 5 Transactions</h6>
+            </div>
+            <% if (creditLog.length > 0) { %>
+              <% creditLog.slice(0, 5).forEach(entry => { %>
+              <div class="mini-log-row">
+                <div class="mini-log-icon <%= entry.operation === 'credit' ? 'bg-success' : 'bg-danger' %>">
+                  <i class="fas fa-<%= entry.operation === 'credit' ? 'plus' : 'minus' %>"></i>
+                </div>
+                <div class="flex-grow-1 overflow-hidden">
+                  <div class="fw-semibold small text-truncate"><%= entry.username %></div>
+                  <div class="text-muted" style="font-size:0.75rem;"><%= entry.field %> · <%= new Date(entry.createdAt).toLocaleDateString() %></div>
+                </div>
+                <div class="ms-2 text-end">
+                  <span class="fw-bold small text-<%= entry.operation === 'credit' ? 'success' : 'danger' %>">
+                    <%= entry.operation === 'credit' ? '+' : '-' %>$<%= entry.amount.toFixed(2) %>
+                  </span>
+                </div>
+              </div>
+              <% }) %>
+            <% } else { %>
+              <p class="text-center py-3 text-muted small">No transactions yet.</p>
+            <% } %>
+          </div>
+        </div>
+
+        <!-- ── Right: User Search + Full Log ── -->
+        <div class="col-lg-8 mb-4">
+
+          <!-- User search table -->
+          <div class="dash-card mb-4">
+            <div class="dash-card-header">
+              <h6><i class="fas fa-search me-2 text-green"></i>Find & Select User</h6>
+            </div>
+            <div class="mb-3">
+              <input type="text" id="userSearch" class="form-control"
+                     placeholder="Search by username or email…">
+            </div>
+            <div class="table-responsive" style="max-height:320px;overflow-y:auto;">
+              <table class="table dash-table mb-0" id="userTable">
+                <thead>
+                  <tr>
+                    <th>User</th>
+                    <th>Balance</th>
+                    <th>Bonus</th>
+                    <th>Status</th>
+                    <th>Select</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <% users.forEach(u => { %>
+                  <% if (u.role !== 'admin') { %>
+                  <tr class="user-row"
+                      data-id="<%= u._id %>"
+                      data-username="<%= u.username %>"
+                      data-email="<%= u.email %>"
+                      data-balance="<%= u.balance.toFixed(2) %>">
+                    <td>
+                      <strong><%= u.username %></strong>
+                      <br><small class="text-muted"><%= u.email %></small>
+                    </td>
+                    <td>$<%= u.balance.toFixed(2) %></td>
+                    <td>$<%= u.bonus.toFixed(2) %></td>
+                    <td>
+                      <span class="badge bg-<%= u.isActive ? 'success' : 'danger' %>">
+                        <%= u.isActive ? 'Active' : 'Inactive' %>
+                      </span>
+                    </td>
+                    <td>
+                      <button type="button" class="btn btn-xs btn-outline-theme select-user-btn"
+                              data-id="<%= u._id %>"
+                              data-username="<%= u.username %>"
+                              data-email="<%= u.email %>"
+                              data-balance="<%= u.balance.toFixed(2) %>">
+                        Select
+                      </button>
+                    </td>
+                  </tr>
+                  <% } %>
+                  <% }) %>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- Full audit log -->
+          <div class="dash-card">
+            <div class="dash-card-header">
+              <h6><i class="fas fa-list-check me-2 text-green"></i>Full Audit Log</h6>
+              <a href="/admin/credit?export=1" class="btn btn-xs btn-outline-secondary">
+                <i class="fas fa-download me-1"></i>Export CSV
+              </a>
+            </div>
+            <div class="table-responsive">
+              <table class="table dash-table">
+                <thead>
+                  <tr>
+                    <th>User</th>
+                    <th>Operation</th>
+                    <th>Field</th>
+                    <th>Amount</th>
+                    <th>Note</th>
+                    <th>Date</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <% if (creditLog.length > 0) { %>
+                    <% creditLog.forEach(entry => { %>
+                    <tr>
+                      <td>
+                        <strong><%= entry.username %></strong>
+                        <br><small class="text-muted"><%= entry.email %></small>
+                      </td>
+                      <td>
+                        <span class="badge bg-<%= entry.operation === 'credit' ? 'success' : 'danger' %>">
+                          <i class="fas fa-<%= entry.operation === 'credit' ? 'plus' : 'minus' %>-circle me-1"></i>
+                          <%= entry.operation %>
+                        </span>
+                      </td>
+                      <td>
+                        <span class="badge bg-secondary-subtle text-secondary">
+                          <%= entry.field %>
+                        </span>
+                      </td>
+                      <td>
+                        <strong class="text-<%= entry.operation === 'credit' ? 'success' : 'danger' %>">
+                          <%= entry.operation === 'credit' ? '+' : '-' %>$<%= entry.amount.toFixed(2) %>
+                        </strong>
+                      </td>
+                      <td class="text-muted small"><%= entry.note || '—' %></td>
+                      <td class="text-muted small">
+                        <%= new Date(entry.createdAt).toLocaleDateString() %>
+                        <br><span style="font-size:0.7rem;"><%= new Date(entry.createdAt).toLocaleTimeString() %></span>
+                      </td>
+                    </tr>
+                    <% }) %>
+                  <% } else { %>
+                  <tr>
+                    <td colspan="6" class="text-center py-5 text-muted">
+                      <i class="fas fa-inbox fa-2x mb-2 d-block opacity-25"></i>
+                      No manual transactions recorded yet.
+                    </td>
+                  </tr>
+                  <% } %>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<%- include('../partials/footer') %>
+
+<style>
+/* ── Selected user display box ── */
+.selected-user-box {
+  background: var(--bs-light, #f8f9fa);
+  border: 2px dashed #dee2e6;
+  border-radius: 8px;
+  padding: 10px 14px;
+  font-size: 0.88rem;
+  transition: border-color 0.2s, background 0.2s;
+}
+.selected-user-box.has-user {
+  border-color: #1a9e5f;
+  background: #f0fff8;
+  color: #0d6e46;
+  font-weight: 600;
+}
+
+/* ── Operation radio toggle ── */
+.op-radio { cursor: pointer; }
+.op-radio input[type="radio"] { display: none; }
+.op-radio-label {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px 12px;
+  border-radius: 8px;
+  border: 2px solid #dee2e6;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s;
+  background: #fff;
+  color: #6c757d;
+}
+.op-radio input:checked + .op-credit {
+  border-color: #1a9e5f;
+  background: #e6fff0;
+  color: #0d6e46;
+}
+.op-radio input:checked + .op-debit {
+  border-color: #e74c3c;
+  background: #fff0f0;
+  color: #c0392b;
+}
+.op-radio-label:hover { opacity: 0.85; }
+
+/* ── Mini log rows ── */
+.mini-log-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 0;
+  border-bottom: 1px solid rgba(0,0,0,0.06);
+}
+.mini-log-row:last-child { border-bottom: none; }
+.mini-log-icon {
+  width: 32px; height: 32px;
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  color: #fff;
+  font-size: 0.75rem;
+  flex-shrink: 0;
+}
+
+/* ── Selected row highlight ── */
+.user-row.selected-row { background: #f0fff8; }
+.user-row.selected-row td { border-color: #b7e4cc; }
+
+/* ── Outline theme button ── */
+.btn-outline-theme {
+  border-color: #1a9e5f;
+  color: #1a9e5f;
+}
+.btn-outline-theme:hover {
+  background: #1a9e5f;
+  color: #fff;
+}
+</style>
+
+<script>
+(function () {
+  const searchInput   = document.getElementById('userSearch');
+  const rows          = document.querySelectorAll('.user-row');
+  const formUserId    = document.getElementById('formUserId');
+  const selectedName  = document.getElementById('selectedUserName');
+  const selectedBox   = document.getElementById('selectedUserDisplay');
+  const submitBtn     = document.getElementById('submitBtn');
+
+  /* ── Live search filter ── */
+  searchInput.addEventListener('input', function () {
+    const q = this.value.toLowerCase().trim();
+    rows.forEach(row => {
+      const match = row.dataset.username.toLowerCase().includes(q) ||
+                    row.dataset.email.toLowerCase().includes(q);
+      row.style.display = match ? '' : 'none';
+    });
+  });
+
+  /* ── User selection ── */
+  document.querySelectorAll('.select-user-btn').forEach(btn => {
+    btn.addEventListener('click', function () {
+      const id       = this.dataset.id;
+      const username = this.dataset.username;
+      const email    = this.dataset.email;
+      const balance  = this.dataset.balance;
+
+      // Update hidden input
+      formUserId.value = id;
+
+      // Update display box
+      selectedBox.classList.add('has-user');
+      selectedName.textContent = `${username} — ${email}  (Balance: $${balance})`;
+
+      // Highlight selected row
+      rows.forEach(r => r.classList.remove('selected-row'));
+      this.closest('tr').classList.add('selected-row');
+
+      // Enable submit
+      submitBtn.disabled = false;
+
+      // Change button text on all rows
+      document.querySelectorAll('.select-user-btn').forEach(b => {
+        b.textContent = 'Select';
+        b.classList.remove('btn-theme');
+        b.classList.add('btn-outline-theme');
+      });
+      this.textContent = '✓ Selected';
+      this.classList.remove('btn-outline-theme');
+      this.classList.add('btn-theme');
+    });
+  });
+
+  /* ── Confirm before submit ── */
+  document.getElementById('creditForm').addEventListener('submit', function (e) {
+    const op     = document.querySelector('input[name="operation"]:checked').value;
+    const amount = document.querySelector('input[name="amount"]').value;
+    const name   = selectedName.textContent.split('—')[0].trim();
+    const field  = document.querySelector('select[name="field"]').value;
+    if (!confirm(`Apply ${op} of $${parseFloat(amount).toFixed(2)} to [${field}] for ${name}?`)) {
+      e.preventDefault();
+    }
+  });
+})();
+</script>

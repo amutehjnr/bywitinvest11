@@ -346,4 +346,105 @@ router.post('/settings',
   }
 );
 
+// ── GET /admin/credit ─────────────────────────────────────────────────────
+router.get('/credit', async (req, res) => {
+  try {
+    // CSV export
+    if (req.query.export === '1') {
+      const log = await CreditLog.find().sort({ createdAt: -1 }).lean();
+      const header = 'Date,Username,Email,Operation,Field,Amount,Note\n';
+      const rows = log.map(e =>
+        `"${new Date(e.createdAt).toISOString()}","${e.username}","${e.email}","${e.operation}","${e.field}","${e.amount}","${(e.note || '').replace(/"/g, '""')}"`
+      ).join('\n');
+      res.setHeader('Content-Type', 'text/csv');
+      res.setHeader('Content-Disposition', 'attachment; filename="credit-log.csv"');
+      return res.send(header + rows);
+    }
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const [users, creditLog, todayLog] = await Promise.all([
+      User.find({ role: 'user' }).select('username email balance bonus totalInvested isActive').sort({ username: 1 }).lean(),
+      CreditLog.find().sort({ createdAt: -1 }).limit(100).lean(),
+      CreditLog.find({ createdAt: { $gte: today } }).lean()
+    ]);
+
+    const creditsToday     = todayLog.length;
+    const totalCreditedToday = todayLog
+      .filter(e => e.operation === 'credit')
+      .reduce((s, e) => s + e.amount, 0);
+
+    res.render('admin/credit', {
+      title: 'Manual Credit / Debit',
+      users,
+      creditLog,
+      creditsToday,
+      totalCreditedToday
+    });
+  } catch (err) {
+    logger.error(`Admin credit GET error: ${err.message}`);
+    req.flash('error', 'Failed to load credit page.');
+    res.redirect('/admin');
+  }
+});
+
+// ── POST /admin/credit ────────────────────────────────────────────────────
+router.post('/credit',
+  [
+    body('userId').isMongoId().withMessage('Invalid user'),
+    body('operation').isIn(['credit', 'debit']).withMessage('Invalid operation'),
+    body('field').isIn(['balance', 'bonus', 'totalInvested']).withMessage('Invalid field'),
+    body('amount').isFloat({ min: 0.01, max: 10000000 }).withMessage('Invalid amount'),
+    body('note').trim().isLength({ max: 300 }).optional({ checkFalsy: true })
+  ],
+  async (req, res) => {
+    const errs = validationResult(req);
+    if (!errs.isEmpty()) {
+      req.flash('error', errs.array()[0].msg);
+      return res.redirect('/admin/credit');
+    }
+    try {
+      const { userId, operation, field, amount, note } = req.body;
+      const amt = parseFloat(parseFloat(amount).toFixed(2));
+
+      const user = await User.findById(userId);
+      if (!user || user.role === 'admin') {
+        req.flash('error', 'User not found.');
+        return res.redirect('/admin/credit');
+      }
+
+      // Prevent debit below zero
+      if (operation === 'debit' && user[field] < amt) {
+        req.flash('error', `Cannot debit $${amt.toFixed(2)} — user only has $${user[field].toFixed(2)} in ${field}.`);
+        return res.redirect('/admin/credit');
+      }
+
+      const delta = operation === 'credit' ? amt : -amt;
+      await User.findByIdAndUpdate(userId, { $inc: { [field]: delta } });
+
+      // Write audit log
+      await CreditLog.create({
+        userId:    user._id,
+        username:  user.username,
+        email:     user.email,
+        operation,
+        field,
+        amount:    amt,
+        note:      note || ''
+      });
+
+      logger.info(`Admin manual ${operation}: userId=${userId} field=${field} amount=${amt}`);
+      req.flash('success',
+        `${operation === 'credit' ? 'Credited' : 'Debited'} $${amt.toFixed(2)} (${field}) ${operation === 'credit' ? 'to' : 'from'} ${user.username}.`
+      );
+      res.redirect('/admin/credit');
+    } catch (err) {
+      logger.error(`Admin credit POST error: ${err.message}`);
+      req.flash('error', 'Transaction failed. Please try again.');
+      res.redirect('/admin/credit');
+    }
+  }
+);
+
 module.exports = router;

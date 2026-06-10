@@ -153,7 +153,22 @@ const walletSchema = new mongoose.Schema({
 walletSchema.index({ user: 1, channel: 1 }, { unique: true });
 const Wallet = mongoose.model('Wallet', walletSchema);
 
+// ── CreditLog ─────────────────────────────────────────────────────────────
+const creditLogSchema = new mongoose.Schema({
+  userId:    { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+  username:  { type: String, default: '' },
+  email:     { type: String, default: '' },
+  operation: { type: String, enum: ['credit', 'debit'], required: true },
+  field:     { type: String, enum: ['balance', 'bonus', 'totalInvested'], required: true },
+  amount:    { type: Number, required: true, min: 0.01 },
+  note:      { type: String, default: '', maxlength: 300 },
+  createdAt: { type: Date, default: Date.now }
+});
+creditLogSchema.index({ createdAt: -1 });
+creditLogSchema.index({ userId: 1 });
+const CreditLog = mongoose.model('CreditLog', creditLogSchema);
+
 module.exports = {
   Plan, Investment, Deposit, Withdrawal, Blog,
-  Team, Testimonial, FAQ, Contact, SiteInfo, Wallet
+  Team, Testimonial, FAQ, Contact, SiteInfo, Wallet, CreditLog
 };
