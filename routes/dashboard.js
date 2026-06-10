@@ -12,6 +12,18 @@ const logger = require('../config/logger');
 
 router.use(ensureAuth);
 
+// Guard: if session userId no longer exists in DB, force logout
+router.use(async (req, res, next) => {
+  const user = await getUserLean(req.session.userId);
+  if (!user) {
+    req.session.destroy(() => {});
+    req.flash('error', 'Session expired. Please log in again.');
+    return res.redirect('/auth/login');
+  }
+  res.locals.currentUser = user; // optional: makes user available to all dashboard views
+  next();
+});
+
 // ── Helper: load current user ─────────────────────────────────────────────────
 const getUser     = (id) => User.findById(id);
 const getUserLean = (id) => User.findById(id).lean();
@@ -25,6 +37,14 @@ router.get('/', async (req, res) => {
       Deposit.find({ user: req.session.userId }).sort({ createdAt: -1 }).limit(5).lean(),
       Withdrawal.find({ user: req.session.userId }).sort({ createdAt: -1 }).limit(5).lean()
     ]);
+
+    // Session points to a deleted/non-existent user — force logout
+    if (!user) {
+      req.session.destroy(() => {});
+      req.flash('error', 'Your account no longer exists. Please log in again.');
+      return res.redirect('/auth/login');
+    }
+
     const totalDeposited = deposits.filter(d => d.status === 'approved').reduce((s, d) => s + d.amount, 0);
     const totalWithdrawn = withdrawals.filter(w => w.status === 'approved').reduce((s, w) => s + w.amount, 0);
     res.render('dashboard/index', {
