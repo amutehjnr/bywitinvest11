@@ -349,6 +349,7 @@ router.post('/settings',
 // ── GET /admin/credit ─────────────────────────────────────────────────────
 router.get('/credit', async (req, res) => {
   try {
+    console.log('CreditLog:', typeof CreditLog);
     // CSV export
     if (req.query.export === '1') {
       const log = await CreditLog.find().sort({ createdAt: -1 }).lean();
