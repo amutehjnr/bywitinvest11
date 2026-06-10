@@ -448,4 +448,41 @@ router.post('/credit',
   }
 );
 
+router.post('/plans/:id/edit',
+  [
+    body('name').trim().notEmpty().isLength({ max: 60 }),
+    body('rate').isFloat({ min: 0.001, max: 1 }),
+    body('minAmount').isFloat({ min: 1 }),
+    body('maxAmount').isFloat({ min: 1 }),
+    body('duration').isIn(['Daily', 'Weekly', 'Monthly'])
+  ],
+  async (req, res) => {
+    const errs = validationResult(req);
+    if (!errs.isEmpty()) {
+      req.flash('error', errs.array()[0].msg);
+      return res.redirect('/admin/plans');
+    }
+    try {
+      const { name, rate, minAmount, maxAmount, duration } = req.body;
+      const plan = await Plan.findById(req.params.id);
+      if (!plan) {
+        req.flash('error', 'Plan not found.');
+        return res.redirect('/admin/plans');
+      }
+      plan.name      = name;
+      plan.rate      = parseFloat(rate);
+      plan.minAmount = parseFloat(minAmount);
+      plan.maxAmount = parseFloat(maxAmount);
+      plan.duration  = duration;
+      await plan.save();
+      logger.info(`Admin edited plan: ${plan._id} → ${name}`);
+      req.flash('success', `Plan "${name}" updated successfully.`);
+    } catch (err) {
+      logger.error(`Plan edit error: ${err.message}`);
+      req.flash('error', 'Update failed.');
+    }
+    res.redirect('/admin/plans');
+  }
+);
+
 module.exports = router;

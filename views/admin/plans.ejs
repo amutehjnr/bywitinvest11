@@ -42,11 +42,14 @@
             </form>
           </div>
         </div>
+
         <div class="col-lg-8">
           <div class="dash-card">
             <div class="table-responsive">
               <table class="table dash-table">
-                <thead><tr><th>Name</th><th>Rate</th><th>Min</th><th>Max</th><th>Duration</th><th>Status</th><th>Actions</th></tr></thead>
+                <thead>
+                  <tr><th>Name</th><th>Rate</th><th>Min</th><th>Max</th><th>Duration</th><th>Status</th><th>Actions</th></tr>
+                </thead>
                 <tbody>
                   <% plans.forEach(p => { %>
                   <tr>
@@ -55,14 +58,32 @@
                     <td>$<%= p.minAmount.toLocaleString() %></td>
                     <td>$<%= p.maxAmount.toLocaleString() %></td>
                     <td><%= p.duration %></td>
-                    <td><span class="badge bg-<%= p.isActive ? 'success' : 'secondary' %>">
-                      <%= p.isActive ? 'Active' : 'Inactive' %>
-                    </span></td>
                     <td>
+                      <span class="badge bg-<%= p.isActive ? 'success' : 'secondary' %>">
+                        <%= p.isActive ? 'Active' : 'Inactive' %>
+                      </span>
+                    </td>
+                    <td>
+                      <!-- Edit -->
+                      <button class="btn btn-xs btn-outline-primary me-1"
+                              data-bs-toggle="modal" data-bs-target="#editPlanModal"
+                              data-id="<%= p._id %>"
+                              data-name="<%= p.name %>"
+                              data-rate="<%= p.rate %>"
+                              data-min="<%= p.minAmount %>"
+                              data-max="<%= p.maxAmount %>"
+                              data-duration="<%= p.duration %>"
+                              title="Edit plan">
+                        <i class="fas fa-pen"></i>
+                      </button>
+                      <!-- Toggle -->
                       <form action="/admin/plans/<%= p._id %>/toggle" method="POST" class="d-inline">
                         <input type="hidden" name="_csrf" value="<%= csrfToken %>">
-                        <button class="btn btn-xs btn-outline-warning me-1" title="Toggle"><i class="fas fa-toggle-on"></i></button>
+                        <button class="btn btn-xs btn-outline-warning me-1" title="Toggle active">
+                          <i class="fas fa-toggle-on"></i>
+                        </button>
                       </form>
+                      <!-- Delete -->
                       <form action="/admin/plans/<%= p._id %>/delete" method="POST" class="d-inline"
                             onsubmit="return confirm('Delete this plan?')">
                         <input type="hidden" name="_csrf" value="<%= csrfToken %>">
@@ -71,7 +92,9 @@
                     </td>
                   </tr>
                   <% }) %>
-                  <% if (!plans.length) { %><tr><td colspan="7" class="text-center py-4 text-muted">No plans yet.</td></tr><% } %>
+                  <% if (!plans.length) { %>
+                  <tr><td colspan="7" class="text-center py-4 text-muted">No plans yet.</td></tr>
+                  <% } %>
                 </tbody>
               </table>
             </div>
@@ -81,4 +104,80 @@
     </div>
   </div>
 </div>
+
+<!-- ── Edit Plan Modal ── -->
+<div class="modal fade" id="editPlanModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title"><i class="fas fa-pen me-2"></i>Edit Plan</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <form id="editPlanForm" method="POST" action="">
+        <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+        <input type="hidden" name="_method" value="PUT">
+        <div class="modal-body">
+          <div class="mb-3">
+            <label class="form-label">Plan Name</label>
+            <input type="text" name="name" id="editName" class="form-control" maxlength="60" required>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Rate <span class="text-muted small">(decimal: 0.065 = 6.5%)</span></label>
+            <div class="input-group">
+              <input type="number" name="rate" id="editRate" class="form-control"
+                     step="0.001" min="0.001" max="1" required>
+              <span class="input-group-text" id="ratePreview">—</span>
+            </div>
+          </div>
+          <div class="row">
+            <div class="col-6 mb-3">
+              <label class="form-label">Min Amount ($)</label>
+              <input type="number" name="minAmount" id="editMin" class="form-control" min="1" required>
+            </div>
+            <div class="col-6 mb-3">
+              <label class="form-label">Max Amount ($)</label>
+              <input type="number" name="maxAmount" id="editMax" class="form-control" min="1" required>
+            </div>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Duration</label>
+            <select name="duration" id="editDuration" class="form-select">
+              <option value="Daily">Daily</option>
+              <option value="Weekly">Weekly</option>
+              <option value="Monthly">Monthly</option>
+            </select>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-theme">
+            <i class="fas fa-save me-1"></i>Save Changes
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
 <%- include('../partials/footer') %>
+
+<script>
+document.getElementById('editPlanModal').addEventListener('show.bs.modal', function (e) {
+  const btn = e.relatedTarget;
+  const rate = parseFloat(btn.dataset.rate);
+
+  document.getElementById('editPlanForm').action = '/admin/plans/' + btn.dataset.id + '/edit';
+  document.getElementById('editName').value       = btn.dataset.name;
+  document.getElementById('editRate').value       = rate;
+  document.getElementById('editMin').value        = btn.dataset.min;
+  document.getElementById('editMax').value        = btn.dataset.max;
+  document.getElementById('editDuration').value   = btn.dataset.duration;
+  document.getElementById('ratePreview').textContent = (rate * 100).toFixed(1) + '%';
+});
+
+// Live % preview as admin types
+document.getElementById('editRate').addEventListener('input', function () {
+  const v = parseFloat(this.value);
+  document.getElementById('ratePreview').textContent = isNaN(v) ? '—' : (v * 100).toFixed(1) + '%';
+});
+</script>
